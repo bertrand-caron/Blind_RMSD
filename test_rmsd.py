@@ -2,6 +2,7 @@ import unittest
 import sys
 import rmsd
 import logging
+import math
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
 
 class Test_RMSD(unittest.TestCase):
@@ -34,6 +35,10 @@ if __name__ == "__main__":
                    ("rotation_90_degrees", 
                     [ [1.,0.,0.], [0.,0.,0.] ], 
                     [ [0.,1.,0.], [0.,0.,0.] ],
+                    0.),
+                   ("rotation_sp2_staggered", 
+                    [ [0.,0.,0.], [1.,1.,0.], [0.,-math.sqrt(2.),0.], [-1.,1.,0.] ], 
+                    [ [0.,0.,0.], [0.,math.sqrt(2),0.], [-1.,-1.,0.], [1.,-1.,0.] ], 
                     0.),
                    )
     for name, points1, points2, expected_rmsd in batch_tests:

@@ -12,29 +12,34 @@ def alignPointsOnPoints(point_list1, point_list2):
     cog1 = center_of_geometry(point_array1)
     cog2 = center_of_geometry(point_array2)
 
-    # First, remove tranlational part
-    translate_cog = cog2 - cog1
-    print "Translational component: {0}".format(translate_cog)
-    translated_point_array1 = point_array1 + translate_cog
+    print "cog1: {0}".format(cog1)
+    print "cog2: {0}".format(cog2)
+
+    # First, remove tranlational part from both by putting the cog in (0,0,0)
+    translated_point_array1 = point_array1 - cog1
+    translated_point_array2 = point_array2 - cog2
+
+    print "translated_point_array1:\n{0}\n".format(translated_point_array1)
+    print "translated_point_array2:\n{0}\n".format(translated_point_array2)
 
     # Break now if there are no rotationnal component
-    if rmsd(translated_point_array1, point_array2) <= RMSD_TOLERANCE: return translated_point_array1
+    if rmsd(translated_point_array1, translated_point_array2) <= RMSD_TOLERANCE: return translated_point_array1 + cog2
 
     # Them try all the rotation that put one on the atom of the first set into one of the atoms of the second sets
     # There are N such rotations
 
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
-    for poin1 in point_list1[0]:
-        pass
+    for point in translated_point_array1[:,0:3]:
+        print "point: {0}".format(point)
 
-    point1_vector = Vector(translated_point_array1[0])
+    point1_vector = Vector(translated_point_array1[0,0:3])
     minimum_rmsd = 100.
     best_aligned_point_array1 = translated_point_array1
     #print "Vector 1 is: {0}".format(point1_vector)
 
-    for point2 in point_list2:
+    for point2_array in translated_point_array2[:,0:3]:
 
-        point2_vector = Vector(point2)
+        point2_vector = Vector(point2_array)
         #print "\nVector 2 is: {0}".format(point2_vector)
 
         # If the points are already superimposed, continue as the rotation matrix would be [[Nan, Nan, Nan], ...
@@ -47,17 +52,18 @@ def alignPointsOnPoints(point_list1, point_list2):
         print r
         rotated_point1_vector = point1_vector.left_multiply(r)
         rotated_point_array1 = np.dot(translated_point_array1, r)
-        print "Coordinate before rotation:"
+
+        print "\nCoordinate of first point array before rotation:"
         print translated_point_array1
         print "Coordinate after rotation:"
         print rotated_point_array1
 
-        #print rotated_point_array1
-        #print point_array2
+        print "\nCoordinate of second point array:"
+        print translated_point_array2
 
-        current_rmsd = rmsd_array(rotated_point_array1, point_array2)
+        current_rmsd = rmsd_array(rotated_point_array1, translated_point_array2)
         minimum_rmsd = minimum(minimum_rmsd, current_rmsd)
-        if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1
+        if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1 + cog2
 
         print "    New RMSD after rotation: {0}".format(current_rmsd)
         #print "{0} has been rotated to {1}".format(point1_vector, rotated_point_array1)

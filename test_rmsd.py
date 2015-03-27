@@ -6,7 +6,12 @@ import math
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
 
 class Test_RMSD(unittest.TestCase):
-    pass
+  def run(self, result=None):
+    if result.failures or result.errors:
+      #print "Aborting due to first failed test ..."
+      pass
+    else:
+      super(Test_RMSD, self).run(result)
 
 def test_alignment_generator(points1, points2, expected_rmsd):
     def test(self):
@@ -21,22 +26,22 @@ def test_alignment_generator(points1, points2, expected_rmsd):
 
 if __name__ == "__main__":
     batch_tests = (
-#                   ("translation_simple", 
-#                    [ [0.,0.,0.], [1.,1.,1.] ], 
-#                    [ [1.,1.,1.], [0.,0.,0.] ],
-#                    0.),
-#                   ("translation_harder", 
-#                    [ [0.,0.,0.], [1.,1.,1.] ], 
-#                    [ [1.,1.,1.], [2.,2.,2.] ],
-#                    0.),
-#                   ("translation_even_harder", 
-#                    [ [0.,0.,0.], [1.,1.,1.], [-1.,-1.,-1.] ], 
-#                    [ [2.,2.,2.], [3.,3.,3.], [4.,4.,4.] ],
-#                    0.),
-#                   ("rotation_90_degrees", 
-#                    [ [1.,0.,0.], [0.,0.,0.] ], 
-#                    [ [0.,1.,0.], [0.,0.,0.] ],
-#                    0.),
+                   ("translation_simple",
+                    [ [0.,0.,0.], [1.,1.,1.] ],
+                    [ [1.,1.,1.], [0.,0.,0.] ],
+                    0.),
+                   ("translation_harder",
+                    [ [0.,0.,0.], [1.,1.,1.] ],
+                    [ [1.,1.,1.], [2.,2.,2.] ],
+                    0.),
+                   ("translation_even_harder",
+                    [ [0.,0.,0.], [1.,1.,1.], [-1.,-1.,-1.] ],
+                    [ [2.,2.,2.], [3.,3.,3.], [4.,4.,4.] ],
+                    0.),
+                   ("rotation_90_degrees",
+                    [ [1.,0.,0.], [0.,0.,0.] ],
+                    [ [0.,1.,0.], [0.,0.,0.] ],
+                    0.),
                    ("rotation_sp2_staggered",
                     [ [1.,1.,0.], [0.,-math.sqrt(2.),0.], [-1.,1.,0.] ],
                     [ [0.,math.sqrt(2),0.], [-1.,-1.,0.], [1.,-1.,0.] ],

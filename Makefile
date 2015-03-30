@@ -1,4 +1,4 @@
-test: Vector.py
+test: Vector.py testing/benzene1.pdb testing/benzene2.pdb testing/ethanol1.pdb testing/ethanol2.pdb pmx
 	python test_rmsd.py
 
 Vector.py: biopython
@@ -7,3 +7,23 @@ Vector.py: biopython
 
 biopython:
 	git clone https://github.com/bertrand-caron/biopython.git
+
+testing:
+	mkdir $@
+
+testing/benzene1.pdb: testing
+	wget "http://compbio.biosci.uq.edu.au/atb/download.py?molid=21364&outputType=top&dbfile=pdb_fromuser" -O $@
+
+# This molecule is actually restricted access only ...
+#testing/benzene2.pdb: testing
+#	wget "http://compbio.biosci.uq.edu.au/atb/download.py?molid=8479&outputType=top&dbfile=pdb_fromuser" -O $@
+
+testing/ethanol1.pdb: testing
+	wget "http://compbio.biosci.uq.edu.au/atb/download.py?molid=22354&outputType=top&dbfile=pdb_fromuser" -O $@
+
+testing/ethanol2.pdb: testing
+	wget "http://compbio.biosci.uq.edu.au/atb/download.py?molid=23009&outputType=top&dbfile=pdb_fromuser" -O $@
+
+pmx:
+		echo -e "Please install pmx\n\n"
+.PHONY: pmx

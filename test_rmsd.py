@@ -6,6 +6,7 @@ import math
 from Vector import rotaxis2m, Vector, rotmat
 from numpy import pi, array, dot, sqrt
 from random import uniform
+import pmx
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
 
 numerical_tolerance = 1e-5
@@ -40,6 +41,29 @@ class Test_RMSD(unittest.TestCase):
         imperfect_cube_array = map(lambda x: x+ uniform(-0.05, 0.05), perfect_cube_array)
         test_alignment_generator(imperfect_cube_array, perfect_rotated_cube, 2*0.05)(self)
 
+    def test_benzene(self):
+        point_list1 = []
+        point_list2 = []
+        m = pmx.Model('testing/benzene1.pdb')
+        point_list1 = [ atom.x[:] for atom in m.atoms]
+        print "\n{0}\n".format(point_list1)
+        m = pmx.Model('testing/benzene2.pdb')
+        point_list2 = [ atom.x[:] for atom in m.atoms]
+        print "\n{0}\n".format(point_list2)
+        m.write('testing/benzene1_aligned.pdb')
+        test_alignment_generator(point_list1, point_list2, .1)(self)
+
+    def test_ethanol(self):
+        point_list1 = []
+        point_list2 = []
+        m = pmx.Model('testing/ethanol1.pdb')
+        point_list1 = [ atom.x[:] for atom in m.atoms]
+        print "\n{0}\n".format(point_list1)
+        m = pmx.Model('testing/ethanol2.pdb')
+        point_list2 = [ atom.x[:] for atom in m.atoms]
+        print "\n{0}\n".format(point_list2)
+        m.write('testing/ethanol1_aligned.pdb')
+        test_alignment_generator(point_list1, point_list2, .1)(self)
 
 batch_tests = (
 #               ("translation_simple",
@@ -62,11 +86,11 @@ batch_tests = (
 #                [ [0.,1.,0.], [0.,0.,0.] ],
 #                None,
 #                0.),
-               ("rotation_90_degrees_norm2",
-                [ [2.,0.,0.], [0.,0.,0.] ],
-                [ [0.,2.,0.], [0.,0.,0.] ],
-                None,
-                0.),
+#               ("rotation_90_degrees_norm2",
+#                [ [2.,0.,0.], [0.,0.,0.] ],
+#                [ [0.,2.,0.], [0.,0.,0.] ],
+#                None,
+#                0.),
 #               ("rotation_90_degrees_norm2_T_shaped_180deg",
 #                [ [2.,0.,0.], [0.,0.,0.], [0.,2.,0.] ],
 #                [ [-2,0.,0.], [ 0.,-2.,0.], [0.,0.,0.] ],

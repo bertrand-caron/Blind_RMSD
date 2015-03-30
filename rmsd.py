@@ -38,7 +38,8 @@ def alignPointsOnPoints(point_list1, point_list2):
 
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     for point in translated_point_array1[:,0:3]:
-        print "point: {0}".format(point)
+        #print "point: {0}".format(point)
+        pass
 
     point1_vector = Vector(translated_point_array1[0,0:3])
 
@@ -52,7 +53,7 @@ def alignPointsOnPoints(point_list1, point_list2):
     for i, point2_array in enumerate(translated_point_array2[:,0:3]):
 
         point2_vector = Vector(point2_array)
-        print "\nVector 2 is: {0}".format(point2_vector)
+        #print "\nVector 2 is: {0}".format(point2_vector)
 
         # If the points are already superimposed, continue as the rotation matrix would be [[Nan, Nan, Nan], ...
         if point1_vector == point2_vector:
@@ -60,10 +61,9 @@ def alignPointsOnPoints(point_list1, point_list2):
             continue
 
         r = rotmat(point2_vector, point1_vector)
-        print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
-        print r
-        print "Matrix parameters"
-        print "{0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
+        #print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
+        #print r
+        print "Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
 
         rotated_point_array1 = np.dot(translated_point_array1, r)
 
@@ -71,9 +71,6 @@ def alignPointsOnPoints(point_list1, point_list2):
         print translated_point_array1
         print "Coordinate after rotation:"
         print rotated_point_array1
-
-        print "Coordinate after rotation in the other direction:"
-        print np.dot(translated_point_array1, np.transpose(r))
 
         print "\nCoordinate of second point array:"
         print translated_point_array2

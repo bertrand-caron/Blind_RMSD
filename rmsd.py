@@ -1,7 +1,7 @@
 from numpy import sqrt, mean, square, min, minimum
 import numpy as np
 from scipy.spatial.distance import cdist
-from Vector import Vector, rotmat
+from Vector import Vector, rotmat, m2rotaxis
 import math
 
 RMSD_TOLERANCE = 1E-3
@@ -62,6 +62,8 @@ def alignPointsOnPoints(point_list1, point_list2):
         r = rotmat(point2_vector, point1_vector)
         print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
         print r
+        print "Matrix parameters"
+        print "{0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
 
         rotated_point_array1 = np.dot(translated_point_array1, r)
 

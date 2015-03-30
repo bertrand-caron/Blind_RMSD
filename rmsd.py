@@ -16,15 +16,15 @@ def alignPointsOnPoints(point_list1, point_list2):
     cog1 = center_of_geometry(point_array1)
     cog2 = center_of_geometry(point_array2)
 
-    print "cog1: {0}".format(cog1)
-    print "cog2: {0}".format(cog2)
+    #if not silent: print "cog1: {0}".format(cog1)
+    #if not silent: print "cog2: {0}".format(cog2)
 
     # First, remove tranlational part from both by putting the cog in (0,0,0)
     translated_point_array1 = point_array1 - cog1
     translated_point_array2 = point_array2 - cog2
 
-    print "translated_point_array1:\n{0}\n".format(translated_point_array1)
-    print "translated_point_array2:\n{0}\n".format(translated_point_array2)
+    #if not silent: print "translated_point_array1:\n{0}\n".format(translated_point_array1)
+    #if not silent: print "translated_point_array2:\n{0}\n".format(translated_point_array2)
 
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
     assert_array_equal(center_of_geometry(translated_point_array1), np.array([0,0,0]))
@@ -46,55 +46,62 @@ def alignPointsOnPoints(point_list1, point_list2):
     # Assert than the first vector is effectively the first point of the point list translated by minus the center of mass
     assert_array_equal(point1_vector._ar, np.array(point_list1[0]) - cog1)
 
-    minimum_rmsd = 100.
-    best_aligned_point_array1 = translated_point_array1
-    #print "Vector 1 is: {0}".format(point1_vector)
+    minimum_rmsd = rmsd_array(translated_point_array1, translated_point_array2)
+    best_aligned_point_array1 = translated_point_array1 + cog2
 
-    for i, point2_array in enumerate(translated_point_array2[:,0:3]):
+    if not silent: print "    New RMSD after translation: {0}".format(minimum_rmsd)
+    if not silent: print "    New AD after translation: {0}".format(ad_array(translated_point_array1, translated_point_array2))
 
-        point2_vector = Vector(point2_array)
-        #print "\nVector 2 is: {0}".format(point2_vector)
+    # Break now if there are no rotationnal component
+    if minimum_rmsd <= RMSD_TOLERANCE: return best_aligned_point_array1.tolist()
 
-        # If the points are already superimposed, continue as the rotation matrix would be [[Nan, Nan, Nan], ...
-        if point1_vector == point2_vector:
-            print "{0} and {1} are superimposed".format(point1_vector, point2_vector)
-            continue
+    for i, point1_array in enumerate(translated_point_array1[:,0:3]):
+        for i, point2_array in enumerate(translated_point_array2[:,0:3]):
 
-        r = rotmat(point2_vector, point1_vector)
-        #print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
-        #print r
-        print "Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
+            point2_vector = Vector(point2_array)
+            #print "\nVector 2 is: {0}".format(point2_vector)
 
-        rotated_point_array1 = np.dot(translated_point_array1, r)
+            # If the points are already superimposed, continue as the rotation matrix would be [[Nan, Nan, Nan], ...
+            if point1_vector == point2_vector:
+                if not silent: print "{0} and {1} are superimposed".format(point1_vector, point2_vector)
+                continue
 
-        print "\nCoordinate of first point array before rotation:"
-        print translated_point_array1
-        print "Coordinate after rotation:"
-        print rotated_point_array1
+            r = rotmat(point2_vector, point1_vector)
+            #print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
+            #print r
+            if not silent: print "Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
+            assert m2rotaxis(r)[0] != 180., "180 degree rotation matrix currently not working"
 
-        print "\nCoordinate of second point array:"
-        print translated_point_array2
+            rotated_point_array1 = np.dot(translated_point_array1, r)
 
-        # If the norm of the vector are the same, check that the rotation effectively put p on q
-        if point2_vector.norm() == point1_vector.norm():
-            assert_array_equal(rotated_point_array1[0, 0:3], point2_vector._ar)
-        # Else do the same operation on the normalized vectors
-        else:
-            assert_array_equal(Vector(rotated_point_array1[0, 0:3]).normalized()._ar, point2_vector.normalized()._ar)
+            #if not silent: print "\nCoordinate of first point array before rotation:"
+            #if not silent: print translated_point_array1
+            #if not silent: print "Coordinate after rotation:"
+            #if not silent: print rotated_point_array1
+            #if not silent: print "\nCoordinate of second point array:"
+            #if not silent: print translated_point_array2
 
-        current_rmsd = rmsd_array(rotated_point_array1, translated_point_array2)
-        minimum_rmsd = minimum(minimum_rmsd, current_rmsd)
-        if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1 + cog2
+            # If the norm of the vector are the same, check that the rotation effectively put p on q
+            if point2_vector.norm() == point1_vector.norm():
+                assert_array_equal(rotated_point_array1[0, 0:3], point2_vector._ar)
+            # Else do the same operation on the normalized vectors
+            else:
+                assert_array_equal(Vector(rotated_point_array1[0, 0:3]).normalized()._ar, point2_vector.normalized()._ar)
 
-        print "    New RMSD after rotation: {0}".format(current_rmsd)
+            current_rmsd = rmsd_array(rotated_point_array1, translated_point_array2)
+            minimum_rmsd = minimum(minimum_rmsd, current_rmsd)
+            if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1 + cog2
 
-        print "    New AD after rotation: {0}".format(ad_array(rotated_point_array1, translated_point_array2))
-        #print "{0} has been rotated to {1}".format(point1_vector, rotated_point_array1)
+            if not silent: print "    New RMSD after rotation: {0}".format(current_rmsd)
 
-        if current_rmsd <= RMSD_TOLERANCE:
-            break
+            if not silent: print "    New AD after rotation: {0}".format(ad_array(rotated_point_array1, translated_point_array2))
 
-    return best_aligned_point_array1
+            if current_rmsd <= RMSD_TOLERANCE:
+                break
+        # Only iterate over the first point of translated_point_array1
+        break
+
+    return best_aligned_point_array1.tolist()
 
 def rmsd(point_list1, point_list2):
     point_array1 = np.array(point_list1)

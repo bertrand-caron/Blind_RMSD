@@ -1,10 +1,14 @@
 from numpy import sqrt, mean, square, min, minimum
 import numpy as np
 from scipy.spatial.distance import cdist
-from Vector import Vector, rotmat
+from Vector import Vector, rotmat, m2rotaxis
 import math
 
 RMSD_TOLERANCE = 1E-3
+
+def assert_array_equal(array1, array2):
+    assert np.allclose( array1, array2), "{0} and {1} are different".format(array1, array2)
+
 
 def alignPointsOnPoints(point_list1, point_list2):
     point_array1 = np.array(point_list1)
@@ -22,6 +26,10 @@ def alignPointsOnPoints(point_list1, point_list2):
     print "translated_point_array1:\n{0}\n".format(translated_point_array1)
     print "translated_point_array2:\n{0}\n".format(translated_point_array2)
 
+    # Assert than the center of geometry of the translated point list are now on (0,0,0)
+    assert_array_equal(center_of_geometry(translated_point_array1), np.array([0,0,0]))
+    assert_array_equal(center_of_geometry(translated_point_array2), np.array([0,0,0]))
+
     # Break now if there are no rotationnal component
     if rmsd(translated_point_array1, translated_point_array2) <= RMSD_TOLERANCE: return translated_point_array1 + cog2
 
@@ -30,14 +38,19 @@ def alignPointsOnPoints(point_list1, point_list2):
 
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     for point in translated_point_array1[:,0:3]:
-        print "point: {0}".format(point)
+        #print "point: {0}".format(point)
+        pass
 
     point1_vector = Vector(translated_point_array1[0,0:3])
+
+    # Assert than the first vector is effectively the first point of the point list translated by minus the center of mass
+    assert_array_equal(point1_vector._ar, np.array(point_list1[0]) - cog1)
+
     minimum_rmsd = 100.
     best_aligned_point_array1 = translated_point_array1
     #print "Vector 1 is: {0}".format(point1_vector)
 
-    for point2_array in translated_point_array2[:,0:3]:
+    for i, point2_array in enumerate(translated_point_array2[:,0:3]):
 
         point2_vector = Vector(point2_array)
         #print "\nVector 2 is: {0}".format(point2_vector)
@@ -48,9 +61,10 @@ def alignPointsOnPoints(point_list1, point_list2):
             continue
 
         r = rotmat(point2_vector, point1_vector)
-        print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
-        print r
-        rotated_point1_vector = point1_vector.left_multiply(r)
+        #print "\nMatrix rotating {0} onto {1}:".format(point1_vector, point2_vector)
+        #print r
+        print "Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
+
         rotated_point_array1 = np.dot(translated_point_array1, r)
 
         print "\nCoordinate of first point array before rotation:"
@@ -61,11 +75,20 @@ def alignPointsOnPoints(point_list1, point_list2):
         print "\nCoordinate of second point array:"
         print translated_point_array2
 
+        # If the norm of the vector are the same, check that the rotation effectively put p on q
+        if point2_vector.norm() == point1_vector.norm():
+            assert_array_equal(rotated_point_array1[0, 0:3], point2_vector._ar)
+        # Else do the same operation on the normalized vectors
+        else:
+            assert_array_equal(Vector(rotated_point_array1[0, 0:3]).normalized()._ar, point2_vector.normalized()._ar)
+
         current_rmsd = rmsd_array(rotated_point_array1, translated_point_array2)
         minimum_rmsd = minimum(minimum_rmsd, current_rmsd)
         if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1 + cog2
 
         print "    New RMSD after rotation: {0}".format(current_rmsd)
+
+        print "    New AD after rotation: {0}".format(ad_array(rotated_point_array1, translated_point_array2))
         #print "{0} has been rotated to {1}".format(point1_vector, rotated_point_array1)
 
         if current_rmsd <= RMSD_TOLERANCE:
@@ -87,6 +110,17 @@ def rmsd_array(point_array1, point_array2):
     # I think this is my favourite one-liner ever! (Probably because it look me 1 hour to construct and it's still beautiful)
     rmsd = sqrt( mean( square( min( distance_matrix, axis=0 ) ) ) )
     return rmsd
+
+# Absolute Deviation
+def ad(point_list1, point_list2):
+    point_array1 = np.array(point_list1)
+    point_array2 = np.array(point_list2)
+    return ad_array(point_array1, point_array2)
+
+def ad_array(point_array1, point_array2):
+    distance_matrix = get_distance_matrix(point_array1, point_array2)
+    ad = max( min( distance_matrix, axis=0 ) )
+    return ad
 
 def distance(point1, point2):
     return np.linalg.norm(point1 - point2)

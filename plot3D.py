@@ -7,15 +7,21 @@ import mpl_toolkits.mplot3d
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 import math
+import numpy as np
 
 
 _fig = None
 _ax = None
 
-def plotPoint(point, color, marker):
+def plotPoint(point, color, marker, label):
     x, y, z = point
     ax = getFig()
-    ax.scatter3D([x], [y], [z], color=color, marker=marker, s=100.)
+    ax.scatter3D([x], [y], [z], color=color, marker=marker, s=100., label=label)
+
+def plotPoints(points, color, marker, label):
+    x, y, z = np.array(points).T
+    ax = getFig()
+    ax.scatter3D(x, y, z, color=color, marker=marker, s=100., label=label)
 
 def plotVect(R, V):
     V = V/numpy.linalg.norm(V)
@@ -43,6 +49,7 @@ def getFig():
         return _ax
 
 def showGraph():
+    _ax.legend(loc = 'upper left', numpoints=1, scatterpoints=1, frameon = False)
     # plot axes
     xlim = _ax.get_xlim3d()
     ylim = _ax.get_ylim3d()
@@ -53,6 +60,7 @@ def showGraph():
     _ax.set_xlabel("x")
     _ax.set_ylabel("y")
     _ax.set_zlabel("z")
+    
     pylab.show()
 
 class Arrow3D(FancyArrowPatch):
@@ -69,10 +77,8 @@ class Arrow3D(FancyArrowPatch):
 if __name__=="__main__":
     coords_ref = [ [1.,1.,0.], [1.,-1.,0.], [-1.,1.,0.], [-1.,-1.,0.]]
     coords_target = [[0.,math.sqrt(2),0.], [0.,-math.sqrt(2),0.], [math.sqrt(2),0.,0.], [-math.sqrt(2),0.,0.]]
-    for point in coords_ref:
-        plotPoint(point, "r", "o")
     
-    for point in coords_target:
-        plotPoint(point, "b", "^")
+    plotPoints(coords_ref, "r", "o", "ref")
+    plotPoints(coords_target, "b", "^", "target")
 
     showGraph()

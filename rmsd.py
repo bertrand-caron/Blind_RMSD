@@ -114,7 +114,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, fl
     ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
 
     # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
-    assert sorted(zip(*perm_list)[1]) == zip(*perm_list)[0], "{0} is not a permutation of {1}, which means that the best structure does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
+    assert sorted(zip(*perm_list)[1]) == zip(*perm_list)[0], "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
 
     return best_aligned_point_array1.tolist()
 

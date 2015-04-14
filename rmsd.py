@@ -4,6 +4,7 @@ from scipy.spatial.distance import cdist
 from Vector import Vector, rotmat, m2rotaxis
 import math
 import itertools
+import charnley_rmsd.kabsch
 
 RMSD_TOLERANCE = 1E-3
 

@@ -1,4 +1,4 @@
-test: Vector.py testing/benzene1.pdb testing/benzene2.pdb testing/ethanol1.pdb testing/ethanol2.pdb testing/methanol1.pdb testing/methanol2.pdb pmx
+test: Vector.py charnley_rmsd/kabsch.py testing/benzene1.pdb testing/benzene2.pdb testing/ethanol1.pdb testing/ethanol2.pdb testing/methanol1.pdb testing/methanol2.pdb pmx
 	python test_rmsd.py
 	#pymol -M testing/methanol*
 
@@ -8,6 +8,13 @@ Vector.py: biopython
 
 biopython:
 	git clone https://github.com/bertrand-caron/biopython.git
+
+charnley_rmsd/kabsch.py: charnley_rmsd
+	ln -s calculate_rmsd $@
+
+charnley_rmsd:
+	git clone https://github.com/charnley/rmsd.git $@
+	touch $@/__init__.py
 
 testing:
 	mkdir $@

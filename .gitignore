@@ -1,3 +1,4 @@
 *.pyc
 Vector.py
 biopython
+charnley_rmsd

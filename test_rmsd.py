@@ -43,37 +43,52 @@ class Test_RMSD(unittest.TestCase):
 #        imperfect_cube_array = map(lambda x: x+ uniform(-0.05, 0.05), perfect_cube_array)
 #        test_alignment_generator(imperfect_cube_array, perfect_rotated_cube, 2*0.05)(self)
 
-    def test_benzene(self):
-        point_list1 = []
-        point_list2 = []
-        m1 = pmx.Model('testing/benzene1.pdb')
-        point_list1 = [ atom.x[:] for atom in m1.atoms]
-        print "\n{0}\n".format(point_list1)
-        m2 = pmx.Model('testing/benzene2.pdb')
-        point_list2 = [ atom.x[:] for atom in m2.atoms]
-        print "\n{0}\n".format(point_list2)
-        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2)
-        print aligned_point_list1
-        for i, atom in enumerate(m1.atoms):
-            atom.x = aligned_point_list1[i]
-        m1.write('testing/benzene1_aligned.pdb')
-        test_alignment_generator(point_list1, point_list2, .1)(self)
+#    def test_benzene(self):
+#        point_list1 = []
+#        point_list2 = []
+#        m1 = pmx.Model('testing/benzene1.pdb')
+#        point_list1 = [ atom.x[:] for atom in m1.atoms]
+#        print "\n{0}\n".format(point_list1)
+#        m2 = pmx.Model('testing/benzene2.pdb')
+#        point_list2 = [ atom.x[:] for atom in m2.atoms]
+#        print "\n{0}\n".format(point_list2)
+#        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2)
+#        print aligned_point_list1
+#        for i, atom in enumerate(m1.atoms):
+#            atom.x = aligned_point_list1[i]
+#        m1.write('testing/benzene1_aligned.pdb')
+#        test_alignment_generator(point_list1, point_list2, .1)(self)
 
-    def test_ethanol(self):
+#    def test_ethanol(self):
+#        point_list1 = []
+#        point_list2 = []
+#        m1 = pmx.Model('testing/ethanol1.pdb')
+#        point_list1 = [ atom.x[:] for atom in m1.atoms]
+#        m2 = pmx.Model('testing/ethanol2.pdb')
+#        point_list2 = [ atom.x[:] for atom in m2.atoms]
+#        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=[atom.symbol for atom in m1.atoms], flavour_list2=[atom.symbol for atom in m2.atoms])
+#        m1.write('testing/ethanol1_aligned_ad.pdb')
+#        #aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False)
+#        #for i, atom in enumerate(m1.atoms):
+#        #    atom.x = aligned_point_list1[i]
+#        #    print atom.symbol
+#        #m1.write('testing/ethanol1_aligned_rmsd.pdb')
+#        test_alignment_generator(point_list1, point_list2, .1)(self)
+
+    def test_methanol(self):
         point_list1 = []
         point_list2 = []
-        m1 = pmx.Model('testing/ethanol1.pdb')
+        m1 = pmx.Model('testing/methanol1.pdb')
         point_list1 = [ atom.x[:] for atom in m1.atoms]
-        print [atom.symbol for atom in m1.atoms]
-        m2 = pmx.Model('testing/ethanol2.pdb')
+        m2 = pmx.Model('testing/methanol2.pdb')
         point_list2 = [ atom.x[:] for atom in m2.atoms]
-        print [atom.symbol for atom in m2.atoms]
-        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=True)
-        print aligned_point_list1
-        for i, atom in enumerate(m1.atoms):
-            atom.x = aligned_point_list1[i]
-            print atom.symbol
-        m1.write('testing/ethanol1_aligned.pdb')
+        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=[atom.symbol for atom in m1.atoms], flavour_list2=[atom.symbol for atom in m2.atoms])
+        m1.write('testing/methanol1_aligned_ad.pdb')
+        #aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False)
+        #for i, atom in enumerate(m1.atoms):
+        #    atom.x = aligned_point_list1[i]
+        #    print atom.symbol
+        #m1.write('testing/methanol1_aligned_rmsd.pdb')
         test_alignment_generator(point_list1, point_list2, .1)(self)
 
 batch_tests = (

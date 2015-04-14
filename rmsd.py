@@ -98,7 +98,12 @@ def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, fl
         on_second_element = lambda x:x[1]
         grouped_flavoured_points1 = group_by(flavoured_points1, on_second_element)
         unique_points1 = [group[0] for group in grouped_flavoured_points1.values() if len(group)==1]
-        if not silent: print "Unique groups: {0}".format(unique_points1)
+        if not silent: print "Unique groups found based on flavouring: {0}".format(unique_points1)
+        if len(unique_points1) < 3:
+            if not silent: print "Warning: Unable to find at least three unique point with the flavouring provided. Falling back to the results of the default method."
+        else:
+            # Align those three points
+            pass
 
     # Construct list of permutation to get list2 from list1
     perm_list = []

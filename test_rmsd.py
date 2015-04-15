@@ -83,13 +83,13 @@ class Test_RMSD(unittest.TestCase):
         m2 = pmx.Model('testing/methanol2.pdb')
         point_list2 = [ atom.x[:] for atom in m2.atoms]
         aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=[atom.symbol for atom in m1.atoms], flavour_list2=[atom.symbol for atom in m2.atoms])
-        m1.write('testing/methanol1_aligned_ad.pdb')
+        m1.write('testing/methanol1_aligned.pdb')
         #aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False)
         #for i, atom in enumerate(m1.atoms):
         #    atom.x = aligned_point_list1[i]
         #    print atom.symbol
         #m1.write('testing/methanol1_aligned_rmsd.pdb')
-        test_alignment_generator(point_list1, point_list2, .1)(self)
+        test_alignment_generator(point_list1, point_list2, .15)(self)
 
 batch_tests = (
 #               ("translation_simple",

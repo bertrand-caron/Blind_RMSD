@@ -10,6 +10,7 @@ biopython:
 	git clone https://github.com/bertrand-caron/biopython.git
 
 charnley_rmsd/kabsch.py: charnley_rmsd
+	if [[ -e $@ ]]; then unlink $@; fi
 	ln -s calculate_rmsd $@
 
 charnley_rmsd:

@@ -4,7 +4,7 @@ from scipy.spatial.distance import cdist
 from Vector import Vector, rotmat, m2rotaxis
 import math
 import itertools
-import charnley_rmsd.kabsch
+import charnley_rmsd.kabsch as kabsch
 
 RMSD_TOLERANCE = 1E-3
 
@@ -12,14 +12,15 @@ def assert_array_equal(array1, array2):
     assert np.allclose( array1, array2), "{0} and {1} are different".format(array1, array2)
 
 
-def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=None, flavour_list2=None):
+def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, flavour_list1=None, flavour_list2=None, show_graph=True):
     distance_function = rmsd_array if not use_AD else ad_array
     has_flavours = True if flavour_list1 and flavour_list2 else False
-    assert len(point_list1) == len(point_list2), "Size of point lists doesn't match: {0} and {1}".format(len(point_list1), len(point_list2))
+    assert len(point_list1) == len(point_list2), "Error: Size of point lists doesn't match: {0} and {1}".format(len(point_list1), len(point_list2))
     if has_flavours: 
-        assert len(flavour_list1) == len(flavour_list2), "Size of flavour lists doesn't match: {0} and {1}".format(len(flavour_list1), len(flavour_list2))
-        assert len(flavour_list1) == len(point_list1), "Size of flavour lists doesn't match size of point lists: {0} and {1}".format(len(flavour_list1), len(point_list2))
-        assert set(flavour_list1) == set(flavour_list2), "There is not a one to one mapping of the flavour sets: {0} and {1}".format(set(flavour_list1), set(flavour_list2))
+        assert len(flavour_list1) == len(flavour_list2), "Error: Size of flavour lists doesn't match: {0} and {1}".format(len(flavour_list1), len(flavour_list2))
+        assert len(flavour_list1) == len(point_list1), "Error: Size of flavour lists doesn't match size of point lists: {0} and {1}".format(len(flavour_list1), len(point_list2))
+        assert sorted(flavour_list1) == sorted(flavour_list2), "Error: There is not a one to one mapping of the flavour sets: {0} and {1}".format(set(flavour_list1), set(flavour_list2))
+    if not silent: print # Add a commencing newline
 
     point_array1, point_array2 = map(np.array, (point_list1, point_list2))
     cog1, cog2 = map(center_of_geometry, (point_array1, point_array2))
@@ -60,12 +61,12 @@ def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, fl
 
             # If the points are already superimposed, continue as the rotation matrix would be [[Nan, Nan, Nan], ...
             if point1_vector == point2_vector:
-                if not silent: print "{0} and {1} are superimposed".format(point1_vector, point2_vector)
+                if not silent: print "Info: {0} and {1} are superimposed".format(point1_vector, point2_vector)
                 continue
 
             r = rotmat(point2_vector, point1_vector)
-            if not silent: print "Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
-            assert m2rotaxis(r)[0] != 180., "180 degree rotation matrix currently not working"
+            if not silent: print "Info: Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
+            assert m2rotaxis(r)[0] != 180., "Error: 180 degree rotation matrix currently not working"
 
             rotated_point_array1 = np.dot(translated_point_array1, r)
 
@@ -83,7 +84,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, fl
             else:
                 assert_array_equal(Vector(rotated_point_array1[0, 0:3]).normalized()._ar, point2_vector.normalized()._ar)
 
-            current_rmsd = distance_function(rotated_point_array1, translated_point_array2, silent-silent)
+            current_rmsd = distance_function(rotated_point_array1, translated_point_array2, silent=silent)
             minimum_rmsd = minimum(minimum_rmsd, current_rmsd)
             if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1 + cog2
 
@@ -93,23 +94,49 @@ def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, fl
         break
 
     if has_flavours: # Additional method if we have flavours
+        if not silent: print "Info: Trying flavoured Kabsch algorithm ..."
         # Try to find three unique flavoured points
         flavoured_points1, flavoured_points2 = zip(point_list1, flavour_list1), zip(point_list2, flavour_list2)
-        on_second_element = lambda x:x[1]
-        grouped_flavoured_points1 = group_by(flavoured_points1, on_second_element)
-        unique_points1 = [group[0] for group in grouped_flavoured_points1.values() if len(group)==1]
-        if not silent: print "Unique groups found based on flavouring: {0}".format(unique_points1)
+        on_first_element, on_second_element = lambda x:x[0], lambda x:x[1]
+        grouped_flavoured_points1, grouped_flavoured_points2 = group_by(flavoured_points1, on_second_element), group_by(flavoured_points2, on_second_element)
+        unique_points1, unique_points2 = [group[0] for group in grouped_flavoured_points1.values() if len(group)==1], [group[0] for group in grouped_flavoured_points2.values() if len(group)==1]
+        if not silent: print "    Info: Unique groups found based on flavouring: {0}".format(unique_points1)
         if len(unique_points1) < 3:
-            if not silent: print "Warning: Unable to find at least three unique point with the flavouring provided. Falling back to the results of the default method."
+            if not silent: print "    Warning: Unable to find at least three unique point with the flavouring provided. Falling back to the results of the default method."
         else:
-            # Align those three points
-            pass
+            assert map(on_second_element, unique_points1[0:3]) == map(on_second_element, unique_points2[0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points1[0:3]), map(on_second_element, unique_points2[0:3]))
+            # Align those three points using Kabsch algorithm
+            P, Q = np.array(map(on_first_element, unique_points1)), np.array(map(on_first_element, unique_points2))
+            print P
+            print Q
+            Pc, Qc = kabsch.centroid(P), kabsch.centroid(Q)
+            P, Q = P - Pc, Q - Qc
+            V = kabsch.rotate(P, Q)
+            U = kabsch.kabsch(P, Q)
+            P_ = np.dot(P, U)
+            Q_ = np.dot(Q, U)
+            kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
+            print rmsd_array(kabsched_list1, point_array2)
+
+            if show_graph:
+                import plot3D as p
+                p.plotPoints(point_array2, 'b',  '+', 'P2')
+                p.plotPoints(translated_point_array2, 'b',  '+', 'P2_translated')
+                p.plotPoints( kabsched_list1, 'r',  'x', 'Target')
+                #p.plotPoints(Q, 'b',  '+', 'Q')
+                #p.plotPoints(P_, 'r', '*', 'P_')
+                #p.plotPoints(Q_, 'b', '^', 'Q_')
+                p.showGraph()
+                #print Q
+                #print P_
+            best_aligned_point_array1 = kabsched_list1
+            if not silent: "    Info: Flavoured Klabsch algorithm found a match with a RMSD of {0}".format(rmsd_array(best_aligned_point_array1, point_array2))
 
     # Construct list of permutation to get list2 from list1
     perm_list = []
-    for i, point1_array in enumerate(translated_point_array1[:,0:3]):
+    for i, point1_array in enumerate(best_aligned_point_array1[:,0:3]):
         min_dist, min_index = None, None
-        for j, point2_array in enumerate(translated_point_array2[:,0:3]):
+        for j, point2_array in enumerate(point_array2[:,0:3]):
             distance = np.linalg.norm(point1_array-point2_array)
             min_dist = min(min_dist, distance) if min_dist else distance
             if distance == min_dist: min_index = j
@@ -119,7 +146,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, fl
     ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
 
     # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
-    assert sorted(zip(*perm_list)[1]) == zip(*perm_list)[0], "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
+    assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
 
     return best_aligned_point_array1.tolist()
 
@@ -130,14 +157,14 @@ def rmsd(point_list1, point_list2):
 
 def rmsd_array(point_array1, point_array2, silent=True):
     distance_matrix = get_distance_matrix(point_array1, point_array2)
-    print count_contact_points(distance_matrix)
+    if not silent: print "    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0])
     
     # Do you like my lisp skills?
     # This convoluted one-liner computes the square (R)oot of the (M)ean (S)quared (M)inimum (D)istances
     # We should call it the RMSMD :).
     # I think this is my favourite one-liner ever! (Probably because it look me 1 hour to construct and it's still beautiful)
     rmsd = sqrt( mean( square( np.min( distance_matrix, axis=0 ) ) ) )
-    if not silent: print "    New RMSD: {0}".format(rmsd)
+    if not silent: print "    Info: New RMSD: {0}".format(rmsd)
     return rmsd
 
 # Absolute Deviation
@@ -149,7 +176,7 @@ def ad(point_list1, point_list2):
 def ad_array(point_array1, point_array2, silent=True):
     distance_matrix = get_distance_matrix(point_array1, point_array2)
     ad = max( np.min( distance_matrix, axis=0 ) )
-    if not silent: print "    New AD: {0}".format(ad)
+    if not silent: print "    Info: New AD: {0}".format(ad)
     return ad
 
 def distance(point1, point2):
@@ -163,14 +190,14 @@ def get_distance_matrix(x, y):
 
 # Return how many point of list1 are within 0.1 Angstrom to another point of list2
 # Throws an error if several points are considered in contact to the same one
-CONTACT_THRESHOLD = 0.2
+CONTACT_THRESHOLD = 0.15
 def count_contact_points(distance_matrix):
     size = distance_matrix.shape[0]
     contacts = 0
     for line in distance_matrix[:,0:size]:
         new_contacts = sum([int(dist <= CONTACT_THRESHOLD) for dist in line])
         if new_contacts in [0,1]: contacts += new_contacts
-        else: raise Exception("Several points are in contact with the same one: {0}".format(line))
+        else: raise Exception("Error: Several points are in contact with the same one: {0}".format(line))
     return contacts
 
 # A reimplemetation of python crappy itertool's broupby method with dictionnaries and less BS

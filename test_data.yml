@@ -1,0 +1,12 @@
+- molecule_name: methanol
+  id1: 15067
+  id2: 19901
+- molecule_name: benzene
+  id1: 21364
+  id2: 8479
+- molecule_name: ethanol
+  id1: 22354
+  id2: 23009
+- molecule_name: sulfuric_acid
+  id1: 1745
+  id2: 20681

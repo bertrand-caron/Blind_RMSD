@@ -6,12 +6,10 @@ import math
 import itertools
 import charnley_rmsd.kabsch as kabsch
 
-RMSD_TOLERANCE = 1E-3
-
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
     assert np.allclose( array1, array2), message.format(array1, array2)
 
-def assert_found_permutation(array1, array2):
+def assert_found_permutation(array1, array2, silent=True):
     perm_list = []
     for i, point1_array in enumerate(array1[:,0:3]):
         min_dist, min_index = None, None
@@ -26,11 +24,9 @@ def assert_found_permutation(array1, array2):
 
     # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
     assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
-    print sorted(zip(*perm_list)[1])
-    print list(zip(*perm_list)[0])
-    print get_distance_matrix(array1, array2)
+    if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], list(zip(*perm_list)[0]))
 
-def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, flavour_list1=None, flavour_list2=None, show_graph=False):
+def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, flavour_list1=None, flavour_list2=None, show_graph=False, rmsd_tolerance=1E-3):
     distance_function = rmsd_array if not use_AD else ad_array
     has_flavours = True if flavour_list1 and flavour_list2 else False
     assert len(point_list1) == len(point_list2), "Error: Size of point lists doesn't match: {0} and {1}".format(len(point_list1), len(point_list2))
@@ -51,7 +47,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
     assert_array_equal(center_of_geometry(translated_point_array2), np.array([0,0,0]))
 
     # Break now if there are no rotationnal component
-    if rmsd(translated_point_array1, translated_point_array2) <= RMSD_TOLERANCE: return translated_point_array1 + cog2
+    if rmsd(translated_point_array1, translated_point_array2) <= rmsd_tolerance: return translated_point_array1 + cog2
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     for point in translated_point_array1[:,0:3]:
         #print "point: {0}".format(point)
@@ -66,8 +62,8 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
     best_aligned_point_array1 = translated_point_array1 + cog2
 
     # Break now if there are no rotationnal component
-    if minimum_rmsd <= RMSD_TOLERANCE:
-        assert_found_permutation(best_aligned_point_array1, point_array2)
+    if minimum_rmsd <= rmsd_tolerance:
+        assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         return best_aligned_point_array1.tolist()
 
@@ -108,15 +104,15 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
             minimum_rmsd = minimum(minimum_rmsd, current_rmsd)
             if current_rmsd == minimum_rmsd: best_aligned_point_array1 = rotated_point_array1 + cog2
 
-            if current_rmsd <= RMSD_TOLERANCE:
+            if current_rmsd <= rmsd_tolerance:
                 break
         # Only iterate over the first point of translated_point_array1
         break
     if not silent: print "Info: Minimum RMSD from unflavoured algorithm is: {0}".format(minimum_rmsd)
 
     # Break now if there if the unflavoured algorithm succeeded
-    if minimum_rmsd <= RMSD_TOLERANCE:
-        assert_found_permutation(best_aligned_point_array1, point_array2)
+    if minimum_rmsd <= rmsd_tolerance:
+        assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
         if not silent: print "Info: Unflavoured algorithm succeeded in finding a match within the given tolerance. Exiting successfully."
         return best_aligned_point_array1.tolist()
 
@@ -161,7 +157,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
             else:
                 if not silent: print "    Info: Flavoured Klabsch algorithm could not found a better match with (best found RMSD: {0})".format(current_rmsd)
 
-    assert_found_permutation(best_aligned_point_array1, point_array2)
+    assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
     return best_aligned_point_array1.tolist()
 
 def rmsd(point_list1, point_list2):

@@ -11,6 +11,24 @@ RMSD_TOLERANCE = 1E-3
 def assert_array_equal(array1, array2):
     assert np.allclose( array1, array2), "{0} and {1} are different".format(array1, array2)
 
+def assert_found_permutation(array1, array2):
+    perm_list = []
+    for i, point1_array in enumerate(array1[:,0:3]):
+        min_dist, min_index = None, None
+        for j, point2_array in enumerate(array2[:,0:3]):
+            distance = np.linalg.norm(point1_array-point2_array)
+            min_dist = min(min_dist, distance) if min_dist else distance
+            if distance == min_dist: min_index = j
+        perm_list.append((i, min_index))
+
+    offending_indexes = filter(lambda x: len(x[1])>=2, [ (value, list(group)) for value, group in itertools.groupby(perm_list, lambda x:x[1]) ])
+    ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
+
+    # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
+    assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
+    print sorted(zip(*perm_list)[1])
+    print list(zip(*perm_list)[0])
+    print get_distance_matrix(array1, array2)
 
 def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, flavour_list1=None, flavour_list2=None, show_graph=True):
     distance_function = rmsd_array if not use_AD else ad_array
@@ -48,8 +66,9 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
     best_aligned_point_array1 = translated_point_array1 + cog2
 
     # Break now if there are no rotationnal component
-    if minimum_rmsd <= RMSD_TOLERANCE: return best_aligned_point_array1.tolist()
-
+    if minimum_rmsd <= RMSD_TOLERANCE:
+        assert_found_permutation(best_aligned_point_array1, point_array2)
+        return best_aligned_point_array1.tolist()
 
     # Then try all the rotation that put one on the atom of the first set into one of the atoms of the second sets
     # There are N such rotations
@@ -93,8 +112,13 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
         # Only iterate over the first point of translated_point_array1
         break
 
+    # Break now if there if the unflavoured algorithm succeeded
+    if minimum_rmsd <= RMSD_TOLERANCE:
+        assert_found_permutation(best_aligned_point_array1, point_array2)
+        return best_aligned_point_array1.tolist()
+
     if has_flavours: # Additional method if we have flavours
-        if not silent: print "Info: Trying flavoured Kabsch algorithm ..."
+        if not silent: print "Info: Found flavours. Trying flavoured Kabsch algorithm ..."
         # Try to find three unique flavoured points
         flavoured_points1, flavoured_points2 = zip(point_list1, flavour_list1), zip(point_list2, flavour_list2)
         on_first_element, on_second_element = lambda x:x[0], lambda x:x[1]
@@ -132,22 +156,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
             best_aligned_point_array1 = kabsched_list1
             if not silent: "    Info: Flavoured Klabsch algorithm found a match with a RMSD of {0}".format(rmsd_array(best_aligned_point_array1, point_array2))
 
-    # Construct list of permutation to get list2 from list1
-    perm_list = []
-    for i, point1_array in enumerate(best_aligned_point_array1[:,0:3]):
-        min_dist, min_index = None, None
-        for j, point2_array in enumerate(point_array2[:,0:3]):
-            distance = np.linalg.norm(point1_array-point2_array)
-            min_dist = min(min_dist, distance) if min_dist else distance
-            if distance == min_dist: min_index = j
-        perm_list.append((i, min_index))
-
-    offending_indexes = filter(lambda x: len(x[1])>=2, [ (value, list(group)) for value, group in itertools.groupby(perm_list, lambda x:x[1]) ])
-    ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
-
-    # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
-    assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
-
+    assert_found_permutation(best_aligned_point_array1, point_array2)
     return best_aligned_point_array1.tolist()
 
 def rmsd(point_list1, point_list2):

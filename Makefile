@@ -1,6 +1,8 @@
 test: Vector.py charnley_rmsd/kabsch.py testing/benzene1.pdb testing/benzene2.pdb testing/ethanol1.pdb testing/ethanol2.pdb testing/methanol1.pdb testing/methanol2.pdb pmx
 	python test_rmsd.py
-	#pymol -M testing/methanol*
+
+test-pymol:
+	pymol -M testing/methanol*
 
 Vector.py: biopython
 	ln -s biopython/Bio/PDB/$@ $@

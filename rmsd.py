@@ -24,7 +24,7 @@ def assert_found_permutation(array1, array2, silent=True):
 
     # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
     assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
-    if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], list(zip(*perm_list)[0]))
+    if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
 
 def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, flavour_list1=None, flavour_list2=None, show_graph=False, rmsd_tolerance=1E-3):
     distance_function = rmsd_array if not use_AD else ad_array
@@ -86,13 +86,6 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
 
             rotated_point_array1 = np.dot(translated_point_array1, r)
 
-            #if not silent: print "\nCoordinate of first point array before rotation:"
-            #if not silent: print translated_point_array1
-            #if not silent: print "Coordinate after rotation:"
-            #if not silent: print rotated_point_array1
-            #if not silent: print "\nCoordinate of second point array:"
-            #if not silent: print translated_point_array2
-
             # If the norm of the vector are the same, check that the rotation effectively put p on q
             if point2_vector.norm() == point1_vector.norm():
                 assert_array_equal(rotated_point_array1[0, 0:3], point2_vector._ar)
@@ -134,18 +127,13 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
             print Q
             Pc, Qc = kabsch.centroid(P), kabsch.centroid(Q)
             P, Q = P - Pc, Q - Qc
-            V = kabsch.rotate(P, Q)
             U = kabsch.kabsch(P, Q)
-            P_ = np.dot(P, U)
-            Q_ = np.dot(Q, U)
             kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
-            print rmsd_array(kabsched_list1, point_array2)
 
             if show_graph:
                 import plot3D as p
                 p.plotPoints(point_array2, 'b',  'o', 'P2')
-                p.plotPoints(translated_point_array2, 'b',  '+', 'P2_translated')
-                p.plotPoints( kabsched_list1, 'r',  'x', 'Target')
+                p.plotPoints(kabsched_list1, 'r',  'x', 'Target')
                 p.showGraph()
             current_match = kabsched_list1
             assert_array_equal( center_of_geometry(best_aligned_point_array1), cog2, "Error: Center of geometry of fitted list1 doesn't match center of geometry of list2 ({0} != {1})")

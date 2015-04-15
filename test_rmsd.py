@@ -23,6 +23,31 @@ def test_alignment_generator(points1, points2, expected_rmsd):
         self.assertLessEqual( rmsd.rmsd(points1_aligned, points2), expected_rmsd)
     return test
 
+def molecule_test_alignment_generator(molecule_name, expected_rmsd):
+    def test(self):
+
+        point_list1 = []
+        point_list2 = []
+        m1 = pmx.Model('testing/{molecule_name}1.pdb'.format(molecule_name=molecule_name))
+        point_list1 = [ atom.x[:] for atom in m1.atoms]
+        m2 = pmx.Model('testing/{molecule_name}2.pdb'.format(molecule_name=molecule_name))
+        point_list2 = [ atom.x[:] for atom in m2.atoms]
+
+        sys.stderr.write("\n")
+        logging.info("RMSD before alignment: {0:.4f}".format(rmsd.rmsd(point_list1, point_list2)))
+
+        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=[atom.symbol for atom in m1.atoms], flavour_list2=[atom.symbol for atom in m2.atoms], show_graph=False)
+        for i, atom in enumerate(m1.atoms):
+            atom.x = aligned_point_list1[i]
+            print atom.symbol
+        m1.write('testing/{molecule_name}1_aligned.pdb'.format(molecule_name=molecule_name))
+
+        logging.info("RMSD after alignment: {0:.4f}".format(rmsd.rmsd(aligned_point_list1, point_list2)))
+        logging.info("Maximum Tolerated RMSD: {0:.4f}".format(expected_rmsd))
+        self.assertLessEqual( rmsd.rmsd(aligned_point_list1, point_list2), expected_rmsd)
+    return test
+
+TEST_MOLECULES = ['methanol', 'ethanol', 'benzene', 'sulfuric_acid']
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):
@@ -35,61 +60,6 @@ class Test_RMSD(unittest.TestCase):
     def assertLessEqual(self, a, b, msg=None):
         if not a <= b + numerical_tolerance:
             self.fail('%s not less than or equal to %s within %f' % (repr(a), repr(b), numerical_tolerance))
-
-
-#    def test_cube(self):
-#        perfect_cube_array = array([ [1.,1.,1.], [1.,-1.,1.], [-1.,1.,1.], [-1.,-1.,1.], [1.,1.,-1.], [1.,-1.,-1.], [-1.,1.,-1.], [-1.,-1.,-1.]])
-#        perfect_rotated_cube = dot( perfect_cube_array, rotmat(Vector([uniform(-2,2), uniform(-2,2), uniform(-2,2)]), Vector([1.,1.,1.])) )
-#        imperfect_cube_array = map(lambda x: x+ uniform(-0.05, 0.05), perfect_cube_array)
-#        test_alignment_generator(imperfect_cube_array, perfect_rotated_cube, 2*0.05)(self)
-
-#    def test_benzene(self):
-#        point_list1 = []
-#        point_list2 = []
-#        m1 = pmx.Model('testing/benzene1.pdb')
-#        point_list1 = [ atom.x[:] for atom in m1.atoms]
-#        print "\n{0}\n".format(point_list1)
-#        m2 = pmx.Model('testing/benzene2.pdb')
-#        point_list2 = [ atom.x[:] for atom in m2.atoms]
-#        print "\n{0}\n".format(point_list2)
-#        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2)
-#        print aligned_point_list1
-#        for i, atom in enumerate(m1.atoms):
-#            atom.x = aligned_point_list1[i]
-#        m1.write('testing/benzene1_aligned.pdb')
-#        test_alignment_generator(point_list1, point_list2, .1)(self)
-
-#    def test_ethanol(self):
-#        point_list1 = []
-#        point_list2 = []
-#        m1 = pmx.Model('testing/ethanol1.pdb')
-#        point_list1 = [ atom.x[:] for atom in m1.atoms]
-#        m2 = pmx.Model('testing/ethanol2.pdb')
-#        point_list2 = [ atom.x[:] for atom in m2.atoms]
-#        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=[atom.symbol for atom in m1.atoms], flavour_list2=[atom.symbol for atom in m2.atoms])
-#        m1.write('testing/ethanol1_aligned_ad.pdb')
-#        #aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False)
-#        #for i, atom in enumerate(m1.atoms):
-#        #    atom.x = aligned_point_list1[i]
-#        #    print atom.symbol
-#        #m1.write('testing/ethanol1_aligned_rmsd.pdb')
-#        test_alignment_generator(point_list1, point_list2, .1)(self)
-
-    def test_methanol(self):
-        point_list1 = []
-        point_list2 = []
-        m1 = pmx.Model('testing/methanol1.pdb')
-        point_list1 = [ atom.x[:] for atom in m1.atoms]
-        m2 = pmx.Model('testing/methanol2.pdb')
-        point_list2 = [ atom.x[:] for atom in m2.atoms]
-        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=[atom.symbol for atom in m1.atoms], flavour_list2=[atom.symbol for atom in m2.atoms])
-        m1.write('testing/methanol1_aligned.pdb')
-        #aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False)
-        #for i, atom in enumerate(m1.atoms):
-        #    atom.x = aligned_point_list1[i]
-        #    print atom.symbol
-        #m1.write('testing/methanol1_aligned_rmsd.pdb')
-        test_alignment_generator(point_list1, point_list2, .15)(self)
 
 batch_tests = (
 #               ("translation_simple",
@@ -154,5 +124,8 @@ if __name__ == "__main__":
         # Source : http://stackoverflow.com/questions/32899/how-to-generate-dynamic-parametrized-unit-tests-in-python
         test = test_alignment_generator(points1, points2, expected_rmsd)
         setattr(Test_RMSD, "test_" + name, test)
+    for molecule_name in TEST_MOLECULES:
+        test = molecule_test_alignment_generator(molecule_name, 0.15)
+        setattr(Test_RMSD, "test_" + molecule_name, test)
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

@@ -33,7 +33,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
     if has_flavours: 
         assert len(flavour_list1) == len(flavour_list2), "Error: Size of flavour lists doesn't match: {0} and {1}".format(len(flavour_list1), len(flavour_list2))
         assert len(flavour_list1) == len(point_list1), "Error: Size of flavour lists doesn't match size of point lists: {0} and {1}".format(len(flavour_list1), len(point_list2))
-        assert sorted(flavour_list1) == sorted(flavour_list2), "Error: There is not a one to one mapping of the flavour sets: {0} and {1}".format(set(flavour_list1), set(flavour_list2))
+        assert sorted(flavour_list1) == sorted(flavour_list2), "Error: There is not a one to one mapping of the flavour sets: {0} and {1}".format(sorted(flavour_list1), sorted(flavour_list2))
     if not silent: print # Add a commencing newline
 
     point_array1, point_array2 = map(np.array, (point_list1, point_list2))

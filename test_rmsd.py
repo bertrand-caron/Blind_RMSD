@@ -41,7 +41,9 @@ def download_molecule_files(molecule_name, molids):
             if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
             if not exists(file_name):
                 with open(file_name, 'w') as fh:
-                    response = urllib2.urlopen(DOWNLOAD_TEMPLATES[extension])
+                    download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid)
+                    print "Downloading: {0}".format(download_url)
+                    response = urllib2.urlopen(download_url)
                     fh.write( response.read() )
 
 def molecule_test_alignment_generator(test_datum, expected_rmsd):

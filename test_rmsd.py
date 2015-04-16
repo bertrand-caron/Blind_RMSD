@@ -33,8 +33,6 @@ DOWNLOAD_TEMPLATES = { 'pdb': 'http://compbio.biosci.uq.edu.au/atb/download.py?m
                        'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/molecules/mol_data.py?molid={molid}',
                      }
 
-FLAVOUR = 'equivalenceGroup' if False else 'type'
-
 # Differentiate -1's
 def split_equivalence_group(eq_list):
     accu = 0
@@ -73,13 +71,15 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
 
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data1 = yaml.load(fh.read())
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='yml')) as fh: data2 = yaml.load(fh.read())
-        flavour_list1 = split_equivalence_group([ atom[FLAVOUR] for index, atom in data1['atoms'].items()])
-        flavour_list2 = split_equivalence_group([ atom[FLAVOUR] for index, atom in data2['atoms'].items()])
+        flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
+        flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
+        element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
+        element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
 
         sys.stderr.write("\n")
         logging.info("RMSD before alignment: {0:.4f}".format(rmsd.rmsd(point_list1, point_list2)))
 
-        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=False, rmsd_tolerance=expected_rmsd)
+        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=False, rmsd_tolerance=expected_rmsd)
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write('testing/{molecule_name}1_aligned.pdb'.format(molecule_name=molecule_name))

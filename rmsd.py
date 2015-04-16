@@ -6,6 +6,8 @@ import math
 import itertools
 import charnley_rmsd.kabsch as kabsch
 
+on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
+
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
     assert np.allclose( array1, array2), message.format(array1, array2)
 
@@ -26,14 +28,20 @@ def assert_found_permutation(array1, array2, silent=True):
     assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
     if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
 
-def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, flavour_list1=None, flavour_list2=None, show_graph=False, rmsd_tolerance=1E-3):
+def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, element_list1=None, element_list2=None, flavour_list1=None, flavour_list2=None, show_graph=False, rmsd_tolerance=1E-3):
     distance_function = rmsd_array if not use_AD else ad_array
     has_flavours = True if flavour_list1 and flavour_list2 else False
+    has_elements = True if element_list1 and element_list2 else False
     assert len(point_list1) == len(point_list2), "Error: Size of point lists doesn't match: {0} and {1}".format(len(point_list1), len(point_list2))
-    if has_flavours: 
+    if has_flavours:
         assert len(flavour_list1) == len(flavour_list2), "Error: Size of flavour lists doesn't match: {0} and {1}".format(len(flavour_list1), len(flavour_list2))
         assert len(flavour_list1) == len(point_list1), "Error: Size of flavour lists doesn't match size of point lists: {0} and {1}".format(len(flavour_list1), len(point_list2))
-        assert sorted(flavour_list1) == sorted(flavour_list2), "Error: There is not a one to one mapping of the flavour sets: {0} and {1}".format(sorted(flavour_list1), sorted(flavour_list2))
+        get_sorted_eqgroup_lengths = lambda flavour_list: sorted(map(len, group_by(flavour_list, on_self).values()))
+        assert get_sorted_eqgroup_lengths(flavour_list1) == get_sorted_eqgroup_lengths(flavour_list2), "Error: There is not a one to one mapping between the lengths of the flavour sets: {0} and {1}".format(get_sorted_eqgroup_lengths(flavour_list1), get_sorted_eqgroup_lengths(flavour_list2))
+    if has_elements:
+        assert len(element_list1) == len(element_list2), "Error: Size of element lists doesn't match: {0} and {1}".format(len(element_list1), len(element_list2))
+        assert len(element_list1) == len(point_list1), "Error: Size of element lists doesn't match size of point lists: {0} and {1}".format(len(element_list1), len(point_list2))
+        assert sorted(element_list1) == sorted(element_list2), "Error: There is not a one to one mapping of the element sets: {0} and {1}".format(sorted(element_list1), sorted(element_list2))
     if not silent: print # Add a commencing newline
 
     point_array1, point_array2 = map(np.array, (point_list1, point_list2))
@@ -109,16 +117,15 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
         if not silent: print "Info: Unflavoured algorithm succeeded in finding a match within the given tolerance. Exiting successfully."
         return best_aligned_point_array1.tolist()
 
-    if has_flavours: # Additional method if we have flavours
-        if not silent: print "Info: Found flavours. Trying flavoured Kabsch algorithm ..."
-        # Try to find three unique flavoured points
-        flavoured_points1, flavoured_points2 = zip(point_list1, flavour_list1), zip(point_list2, flavour_list2)
-        on_first_element, on_second_element = lambda x:x[0], lambda x:x[1]
-        grouped_flavoured_points1, grouped_flavoured_points2 = group_by(flavoured_points1, on_second_element), group_by(flavoured_points2, on_second_element)
-        unique_points1, unique_points2 = [group[0] for group in grouped_flavoured_points1.values() if len(group)==1], [group[0] for group in grouped_flavoured_points2.values() if len(group)==1]
-        if not silent: print "    Info: Unique groups found based on flavouring: {0}".format(unique_points1)
+    if has_elements: # Additional method if we have elements
+        if not silent: print "Info: Found element types. Trying Kabsch algorithm on unique elements ..."
+        # Try to find three unique elements type points
+        element_points1, element_points2 = zip(point_list1, element_list1), zip(point_list2, element_list2)
+        grouped_element_points1, grouped_element_points2 = group_by(element_points1, on_second_element), group_by(element_points2, on_second_element)
+        unique_points1, unique_points2 = [group[0] for group in grouped_element_points1.values() if len(group)==1], [group[0] for group in grouped_element_points2.values() if len(group)==1]
+        if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points1)
         if len(unique_points1) < 3:
-            if not silent: print "    Warning: Unable to find at least three unique point with the flavouring provided. Falling back to the results of the default method."
+            if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Falling back to the results of the default method."
         else:
             assert map(on_second_element, unique_points1[0:3]) == map(on_second_element, unique_points2[0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points1[0:3]), map(on_second_element, unique_points2[0:3]))
             # Align those three points using Kabsch algorithm
@@ -141,9 +148,9 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, fla
             if current_rmsd <= minimum_rmsd:
                 minimum_rmsd = current_rmsd
                 best_aligned_point_array1 = current_match
-                if not silent: print "    Info: Flavoured Klabsch algorithm found a better match with a RMSD of {0}".format(current_rmsd)
+                if not silent: print "    Info: Klabsch algorithm on unique element types found a better match with a RMSD of {0}".format(current_rmsd)
             else:
-                if not silent: print "    Info: Flavoured Klabsch algorithm could not found a better match with (best found RMSD: {0})".format(current_rmsd)
+                if not silent: print "    Info: Klabsch algorithm on unique element types could not found a better match with (best found RMSD: {0})".format(current_rmsd)
 
     assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
     return best_aligned_point_array1.tolist()

@@ -33,6 +33,8 @@ DOWNLOAD_TEMPLATES = { 'pdb': 'http://compbio.biosci.uq.edu.au/atb/download.py?m
                        'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/molecules/mol_data.py?molid={molid}',
                      }
 
+SHOW_GRAPH = True
+
 # Differentiate -1's
 def split_equivalence_group(eq_list):
     accu = 0
@@ -64,9 +66,9 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         download_molecule_files(molecule_name, [test_datum['id1'], test_datum['id2']])
         point_list1 = []
         point_list2 = []
-        m1 = pmx.Model('testing/{molecule_name}1.pdb'.format(molecule_name=molecule_name))
+        m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
-        m2 = pmx.Model('testing/{molecule_name}2.pdb'.format(molecule_name=molecule_name))
+        m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='pdb'))
         point_list2 = [ atom.x[:] for atom in m2.atoms]
 
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data1 = yaml.load(fh.read())
@@ -79,7 +81,7 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         sys.stderr.write("\n")
         logging.info("RMSD before alignment: {0:.4f}".format(rmsd.rmsd(point_list1, point_list2)))
 
-        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=False, rmsd_tolerance=expected_rmsd)
+        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=SHOW_GRAPH, rmsd_tolerance=expected_rmsd)
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write('testing/{molecule_name}1_aligned.pdb'.format(molecule_name=molecule_name))
@@ -88,8 +90,6 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         logging.info("Maximum Tolerated RMSD: {0:.4f}".format(expected_rmsd))
         self.assertLessEqual( rmsd.rmsd(aligned_point_list1, point_list2), expected_rmsd)
     return test
-
-TEST_MOLECULES = ['methanol', 'ethanol', 'benzene', 'sulfuric_acid']
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):

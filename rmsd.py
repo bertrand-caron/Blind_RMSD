@@ -120,6 +120,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
         if not silent: print "Info: Unflavoured algorithm succeeded in finding a match within the given tolerance. Exiting successfully."
         return best_aligned_point_array1.tolist()
 
+    #has_flavours = False
     if has_elements: # Additional method if we have elements
         if not silent: print "Info: Found element types. Trying Kabsch algorithm on unique elements ..."
         # Try to find three unique elements type points
@@ -127,18 +128,19 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
         grouping_function1, grouping_function2 = partial(on_second_element_and_flavour, grouped_flavour_list1) if has_flavours else on_second_element, partial(on_second_element_and_flavour, grouped_flavour_list2) if has_flavours else on_second_element
         grouped_element_points1, grouped_element_points2 = group_by(element_points1, grouping_function1), group_by(element_points2, grouping_function2)
         unique_points1, unique_points2 = [group[0] for group in grouped_element_points1.values() if len(group)==1], [group[0] for group in grouped_element_points2.values() if len(group)==1]
+        assert len(unique_points1) == len(unique_points2), "Error: Non matching number of unique points in {0} and {1}".format(unique_points1, unique_points2)
         if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points1)
         if len(unique_points1) < 3:
             if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Falling back to the results of the default method."
+            missing_points = 3 - len(unique_points1)
+            ambiguous_point_groups1 = [group for group in grouped_element_points1.values() if len(group) ==2]
+            print ambiguous_point_groups1
+            exit(1)
         else:
             assert map(on_second_element, unique_points1[0:3]) == map(on_second_element, unique_points2[0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points1[0:3]), map(on_second_element, unique_points2[0:3]))
             # Align those three points using Kabsch algorithm
-            P, Q = np.array(map(on_first_element, unique_points1)), np.array(map(on_first_element, unique_points2))
-            print P
-            print Q
-            Pc, Qc = kabsch.centroid(P), kabsch.centroid(Q)
-            P, Q = P - Pc, Q - Qc
-            U = kabsch.kabsch(P, Q)
+            P, Q = map(on_first_element, unique_points1), map(on_first_element, unique_points2)
+            U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
 
             if show_graph:
@@ -158,6 +160,16 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
 
     assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
     return best_aligned_point_array1.tolist()
+
+def rotation_matrix_kabsch_on_points(points1, points2):
+    # Align those three points using Kabsch algorithm
+    P, Q = np.array(points1), np.array(points2)
+    print P
+    print Q
+    Pc, Qc = kabsch.centroid(P), kabsch.centroid(Q)
+    P, Q = P - Pc, Q - Qc
+    U = kabsch.kabsch(P, Q)
+    return U, Pc, Qc
 
 def rmsd(point_list1, point_list2):
     point_array1 = np.array(point_list1)

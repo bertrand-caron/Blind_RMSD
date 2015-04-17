@@ -4,9 +4,11 @@ from scipy.spatial.distance import cdist
 from Vector import Vector, rotmat, m2rotaxis
 import math
 import itertools
+from functools import partial
 import charnley_rmsd.kabsch as kabsch
 
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
+on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
     assert np.allclose( array1, array2), message.format(array1, array2)
@@ -37,6 +39,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
         assert len(flavour_list1) == len(flavour_list2), "Error: Size of flavour lists doesn't match: {0} and {1}".format(len(flavour_list1), len(flavour_list2))
         assert len(flavour_list1) == len(point_list1), "Error: Size of flavour lists doesn't match size of point lists: {0} and {1}".format(len(flavour_list1), len(point_list2))
         get_sorted_eqgroup_lengths = lambda flavour_list: sorted(map(len, group_by(flavour_list, on_self).values()))
+        grouped_flavour_list1, grouped_flavour_list2 = group_by(flavour_list1, on_self), group_by(flavour_list2, on_self)
         assert get_sorted_eqgroup_lengths(flavour_list1) == get_sorted_eqgroup_lengths(flavour_list2), "Error: There is not a one to one mapping between the lengths of the flavour sets: {0} and {1}".format(get_sorted_eqgroup_lengths(flavour_list1), get_sorted_eqgroup_lengths(flavour_list2))
     if has_elements:
         assert len(element_list1) == len(element_list2), "Error: Size of element lists doesn't match: {0} and {1}".format(len(element_list1), len(element_list2))
@@ -120,8 +123,9 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
     if has_elements: # Additional method if we have elements
         if not silent: print "Info: Found element types. Trying Kabsch algorithm on unique elements ..."
         # Try to find three unique elements type points
-        element_points1, element_points2 = zip(point_list1, element_list1), zip(point_list2, element_list2)
-        grouped_element_points1, grouped_element_points2 = group_by(element_points1, on_second_element), group_by(element_points2, on_second_element)
+        element_points1, element_points2 = zip(point_list1, element_list1, flavour_list1) if has_flavours else zip(point_list1, element_list1), zip(point_list2, element_list2, flavour_list2) if has_flavours else zip(point_list2, element_list2)
+        grouping_function1, grouping_function2 = partial(on_second_element_and_flavour, grouped_flavour_list1) if has_flavours else on_second_element, partial(on_second_element_and_flavour, grouped_flavour_list2) if has_flavours else on_second_element
+        grouped_element_points1, grouped_element_points2 = group_by(element_points1, grouping_function1), group_by(element_points2, grouping_function2)
         unique_points1, unique_points2 = [group[0] for group in grouped_element_points1.values() if len(group)==1], [group[0] for group in grouped_element_points2.values() if len(group)==1]
         if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points1)
         if len(unique_points1) < 3:

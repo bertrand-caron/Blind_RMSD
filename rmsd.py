@@ -6,6 +6,7 @@ import math
 import itertools
 from functools import partial
 import charnley_rmsd.kabsch as kabsch
+from copy import deepcopy
 
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
@@ -134,13 +135,18 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
             if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Trying to disambiguate enough points to make a fit."
             missing_points = 3 - len(unique_points1)
             ambiguous_point_groups1, ambiguous_point_groups2 = [group for group in grouped_element_points1.values() if len(group) ==2], [group for group in grouped_element_points2.values() if len(group) ==2]
-            assert len(ambiguous_point_groups1) >= missing_points, "Error: Couldn'd find enough point to disambiguate. Aborting"
+            if len(ambiguous_point_groups1) <= missing_points:
+                if not silent: print "Error: Couldn'd find enough point to disambiguate. Returning best found match ..."
+                return best_aligned_point_array1.tolist()
             if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
+            #Hack
+            ambiguous_point_groups1, ambiguous_point_groups2 = reversed(ambiguous_point_groups1), reversed(ambiguous_point_groups2)
+            # End hack
             unique_points2 = unique_points2 + map(on_first_element, ambiguous_point_groups2)[0:missing_points]
-            for permutation in [[0]*missing_points]:
-                ambiguous_unique_points1 = unique_points1
+            for permutation in itertools.product([0,1], repeat=missing_points):
+                ambiguous_unique_points1 = deepcopy(unique_points1)
                 for i, ambiguous_group in enumerate(ambiguous_point_groups1):
-                    ambiguous_unique_points1.append(ambiguous_group[i])
+                    ambiguous_unique_points1.append(ambiguous_group[ permutation[i] ])
                     if len(ambiguous_unique_points1) == 3: break
                 # Align those three points using Kabsch algorithm
                 print ambiguous_unique_points1
@@ -148,9 +154,10 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
                 P, Q = map(on_first_element, ambiguous_unique_points1), map(on_first_element, unique_points2)
                 U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
                 kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
-                if show_graph: do_show_graph(point_array2, kabsched_list1)
-            return kabsched_list1.tolist()
+                current_rmsd = distance_function(kabsched_list1, point_array2, silent=silent)
+                if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_array1-Pc,"P1-Pc"), (point_array2-Qc,"P2-Qc")])
             if not silent: print "    Warning: Failed to disambiguate enough points. Falling back to the results of the default method."
+            return kabsched_list1.tolist()
         else:
             assert map(on_second_element, unique_points1[0:3]) == map(on_second_element, unique_points2[0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points1[0:3]), map(on_second_element, unique_points2[0:3]))
             # Align those three points using Kabsch algorithm
@@ -158,7 +165,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
 
-            if show_graph: do_show_graph(point_array2, kabsched_list1)
+            if show_graph: do_show_graph([(point_array2,""), (kabsched_list1,"")])
 
             current_match = kabsched_list1
             assert_array_equal( center_of_geometry(best_aligned_point_array1), cog2, "Error: Center of geometry of fitted list1 doesn't match center of geometry of list2 ({0} != {1})")
@@ -176,17 +183,19 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
 def rotation_matrix_kabsch_on_points(points1, points2):
     # Align those three points using Kabsch algorithm
     P, Q = np.array(points1), np.array(points2)
-    print P
-    print Q
+    #print P
+    #print Q
     Pc, Qc = kabsch.centroid(P), kabsch.centroid(Q)
     P, Q = P - Pc, Q - Qc
     U = kabsch.kabsch(P, Q)
     return U, Pc, Qc
 
-def do_show_graph(array1, array2):
+def do_show_graph(array_list):
     import plot3D as p
-    p.plotPoints(array1, 'b',  'o', 'P2')
-    p.plotPoints(array2, 'r',  'x', 'Target')
+    symbol_list = ['x', 'o', '+', '^']
+    colour_list = ['b', 'r', 'g', 'y']
+    for symbol, colour, array in zip(symbol_list, colour_list, array_list):
+        p.plotPoints(array[0], colour,  symbol, array[1])
     p.showGraph()
 
 def rmsd(point_list1, point_list2):

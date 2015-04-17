@@ -49,6 +49,7 @@ def getFig():
         return _ax
 
 def showGraph():
+    global _fix, _ax
     _ax.legend(loc = 'upper left', numpoints=1, scatterpoints=1, frameon = False)
     # plot axes
     xlim = _ax.get_xlim3d()
@@ -62,6 +63,7 @@ def showGraph():
     _ax.set_zlabel("z")
     
     pylab.show()
+    _fix, _ax = None, None
 
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):

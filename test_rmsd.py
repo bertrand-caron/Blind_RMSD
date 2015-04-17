@@ -84,7 +84,7 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=SHOW_GRAPH, rmsd_tolerance=expected_rmsd)
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
-        m1.write('testing/{molecule_name}1_aligned.pdb'.format(molecule_name=molecule_name))
+        m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))
 
         logging.info("RMSD after alignment: {0:.4f}".format(rmsd.rmsd(aligned_point_list1, point_list2)))
         logging.info("Maximum Tolerated RMSD: {0:.4f}".format(expected_rmsd))

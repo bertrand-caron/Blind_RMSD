@@ -4,9 +4,9 @@
 #- molecule_name: benzene
 #  id1: 21364
 #  id2: 8652
-#- molecule_name: ethanol
-#  id1: 22354
-#  id2: 23009
+- molecule_name: ethanol
+  id1: 22354
+  id2: 23009
 #- molecule_name: sulfuric_acid
 #  id1: 1745
 #  id2: 20681

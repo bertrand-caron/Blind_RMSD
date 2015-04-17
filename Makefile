@@ -1,8 +1,8 @@
 test: Vector.py charnley_rmsd/kabsch.py pmx
 	python test_rmsd.py
 
-test-pymol:
-	pymol -M testing/methanol*
+test-pymol: test
+	pymol -M testing/ethanol/*.pdb
 
 Vector.py: biopython
 	ln -s biopython/Bio/PDB/$@ $@

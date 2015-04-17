@@ -131,11 +131,26 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
         assert len(unique_points1) == len(unique_points2), "Error: Non matching number of unique points in {0} and {1}".format(unique_points1, unique_points2)
         if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points1)
         if len(unique_points1) < 3:
-            if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Falling back to the results of the default method."
+            if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Trying to disambiguate enough points to make a fit."
             missing_points = 3 - len(unique_points1)
-            ambiguous_point_groups1 = [group for group in grouped_element_points1.values() if len(group) ==2]
-            print ambiguous_point_groups1
-            exit(1)
+            ambiguous_point_groups1, ambiguous_point_groups2 = [group for group in grouped_element_points1.values() if len(group) ==2], [group for group in grouped_element_points2.values() if len(group) ==2]
+            assert len(ambiguous_point_groups1) >= missing_points, "Error: Couldn'd find enough point to disambiguate. Aborting"
+            if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
+            unique_points2 = unique_points2 + map(on_first_element, ambiguous_point_groups2)[0:missing_points]
+            for permutation in [[0]*missing_points]:
+                ambiguous_unique_points1 = unique_points1
+                for i, ambiguous_group in enumerate(ambiguous_point_groups1):
+                    ambiguous_unique_points1.append(ambiguous_group[i])
+                    if len(ambiguous_unique_points1) == 3: break
+                # Align those three points using Kabsch algorithm
+                print ambiguous_unique_points1
+                print unique_points2
+                P, Q = map(on_first_element, ambiguous_unique_points1), map(on_first_element, unique_points2)
+                U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
+                kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
+                if show_graph: do_show_graph(point_array2, kabsched_list1)
+            return kabsched_list1.tolist()
+            if not silent: print "    Warning: Failed to disambiguate enough points. Falling back to the results of the default method."
         else:
             assert map(on_second_element, unique_points1[0:3]) == map(on_second_element, unique_points2[0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points1[0:3]), map(on_second_element, unique_points2[0:3]))
             # Align those three points using Kabsch algorithm
@@ -143,11 +158,8 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
 
-            if show_graph:
-                import plot3D as p
-                p.plotPoints(point_array2, 'b',  'o', 'P2')
-                p.plotPoints(kabsched_list1, 'r',  'x', 'Target')
-                p.showGraph()
+            if show_graph: do_show_graph(point_array2, kabsched_list1)
+
             current_match = kabsched_list1
             assert_array_equal( center_of_geometry(best_aligned_point_array1), cog2, "Error: Center of geometry of fitted list1 doesn't match center of geometry of list2 ({0} != {1})")
             current_rmsd = distance_function(current_match, point_array2, silent=silent)
@@ -170,6 +182,12 @@ def rotation_matrix_kabsch_on_points(points1, points2):
     P, Q = P - Pc, Q - Qc
     U = kabsch.kabsch(P, Q)
     return U, Pc, Qc
+
+def do_show_graph(array1, array2):
+    import plot3D as p
+    p.plotPoints(array1, 'b',  'o', 'P2')
+    p.plotPoints(array2, 'r',  'x', 'Target')
+    p.showGraph()
 
 def rmsd(point_list1, point_list2):
     point_array1 = np.array(point_list1)

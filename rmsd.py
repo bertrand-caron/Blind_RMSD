@@ -11,6 +11,10 @@ from copy import deepcopy
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
+N_COMPLEXITY = 2
+
+ALLOW_SHORTCUTS = False
+
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
     assert np.allclose( array1, array2), message.format(array1, array2)
 
@@ -59,7 +63,8 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
     assert_array_equal(center_of_geometry(translated_point_array2), np.array([0,0,0]))
 
     # Break now if there are no rotationnal component
-    if rmsd(translated_point_array1, translated_point_array2) <= rmsd_tolerance: return translated_point_array1 + cog2
+    if rmsd(translated_point_array1, translated_point_array2) <= rmsd_tolerance and ALLOW_SHORTCUTS: 
+        return translated_point_array1 + cog2
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     for point in translated_point_array1[:,0:3]:
         #print "point: {0}".format(point)
@@ -74,7 +79,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
     best_aligned_point_array1 = translated_point_array1 + cog2
 
     # Break now if there are no rotationnal component
-    if minimum_rmsd <= rmsd_tolerance:
+    if minimum_rmsd <= rmsd_tolerance and ALLOW_SHORTCUTS:
         assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         return best_aligned_point_array1.tolist()
@@ -116,7 +121,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
     if not silent: print "Info: Minimum RMSD from unflavoured algorithm is: {0}".format(minimum_rmsd)
 
     # Break now if there if the unflavoured algorithm succeeded
-    if minimum_rmsd <= rmsd_tolerance:
+    if minimum_rmsd <= rmsd_tolerance and ALLOW_SHORTCUTS:
         assert_found_permutation(best_aligned_point_array1, point_array2, silent=silent)
         if not silent: print "Info: Unflavoured algorithm succeeded in finding a match within the given tolerance. Exiting successfully."
         return best_aligned_point_array1.tolist()
@@ -128,13 +133,13 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
         element_points1, element_points2 = zip(point_list1, element_list1, flavour_list1) if has_flavours else zip(point_list1, element_list1), zip(point_list2, element_list2, flavour_list2) if has_flavours else zip(point_list2, element_list2)
         grouping_function1, grouping_function2 = partial(on_second_element_and_flavour, grouped_flavour_list1) if has_flavours else on_second_element, partial(on_second_element_and_flavour, grouped_flavour_list2) if has_flavours else on_second_element
         grouped_element_points1, grouped_element_points2 = group_by(element_points1, grouping_function1), group_by(element_points2, grouping_function2)
-        unique_points1, unique_points2 = [group[0] for group in grouped_element_points1.values() if len(group)==1], [group[0] for group in grouped_element_points2.values() if len(group)==1]
+        unique_points1, unique_points2 = [group[0] for group in grouped_element_points1.values() if len(group) == 1], [group[0] for group in grouped_element_points2.values() if len(group) == 1 ]
         assert len(unique_points1) == len(unique_points2), "Error: Non matching number of unique points in {0} and {1}".format(unique_points1, unique_points2)
         if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points1)
         if len(unique_points1) < 3:
             if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Trying to disambiguate enough points to make a fit."
             missing_points = 3 - len(unique_points1)
-            ambiguous_point_groups1, ambiguous_point_groups2 = [group for group in grouped_element_points1.values() if len(group) ==2], [group for group in grouped_element_points2.values() if len(group) ==2]
+            ambiguous_point_groups1, ambiguous_point_groups2 = [group for group in grouped_element_points1.values() if 1 < len(group) <= N_COMPLEXITY ], [group for group in grouped_element_points2.values() if 1 < len(group) <= N_COMPLEXITY]
             if len(ambiguous_point_groups1) <= missing_points:
                 if not silent: print "Error: Couldn'd find enough point to disambiguate. Returning best found match ..."
                 return best_aligned_point_array1.tolist()
@@ -165,7 +170,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
 
-            if show_graph: do_show_graph([(point_array2,""), (kabsched_list1,"")])
+            if show_graph: do_show_graph([(point_array2, "P1"), (kabsched_list1, "P2")])
 
             current_match = kabsched_list1
             assert_array_equal( center_of_geometry(best_aligned_point_array1), cog2, "Error: Center of geometry of fitted list1 doesn't match center of geometry of list2 ({0} != {1})")

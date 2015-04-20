@@ -147,6 +147,7 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
             if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
             unique_points2 = unique_points2 + map(on_first_element, ambiguous_point_groups2)[0:missing_points]
             permutations_list1 = itertools.product(*map(range, [len(group) for group in ambiguous_point_groups1[0:missing_points] ]))
+            best_kabsched_list1, best_rmsd = None, None
             for permutation in permutations_list1:
                 ambiguous_unique_points1 = deepcopy(unique_points1)
                 for i, ambiguous_group in enumerate(ambiguous_point_groups1):
@@ -159,9 +160,12 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
                 U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
                 kabsched_list1 = np.dot(point_array1-Pc, U) + Qc
                 current_rmsd = distance_function(kabsched_list1, point_array2, silent=silent)
+                if (not best_rmsd) or current_rmsd <= best_rmsd:
+                    best_kabsched_list1, best_rmsd = kabsched_list1, current_rmsd
+                    if not silent: print "    Info: Best RMSD so far with random 3-point Kabsch fitting: {0}".format(best_rmsd)
                 if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_array1-Pc,"P1-Pc"), (point_array2-Qc,"P2-Qc")])
-            if not silent: print "    Warning: Failed to disambiguate enough points. Falling back to the results of the default method."
-            return kabsched_list1.tolist()
+            if not silent: print "    Info: Returning best match with random 3-point Kabsch fitting (RMSD: {0})".format(best_rmsd)
+            return best_kabsched_list1.tolist()
         else:
             assert map(on_second_element, unique_points1[0:3]) == map(on_second_element, unique_points2[0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points1[0:3]), map(on_second_element, unique_points2[0:3]))
             # Align those three points using Kabsch algorithm

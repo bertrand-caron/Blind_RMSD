@@ -11,7 +11,7 @@ from copy import deepcopy
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
-N_COMPLEXITY = 2
+N_COMPLEXITY = 3
 
 ALLOW_SHORTCUTS = False
 
@@ -140,15 +140,14 @@ def alignPointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, ele
             if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Trying to disambiguate enough points to make a fit."
             missing_points = 3 - len(unique_points1)
             ambiguous_point_groups1, ambiguous_point_groups2 = [group for group in grouped_element_points1.values() if 1 < len(group) <= N_COMPLEXITY ], [group for group in grouped_element_points2.values() if 1 < len(group) <= N_COMPLEXITY]
+            ambiguous_point_groups1, ambiguous_point_groups2 = sorted(ambiguous_point_groups1, key=len), sorted(ambiguous_point_groups2, key=len)
             if len(ambiguous_point_groups1) <= missing_points:
                 if not silent: print "Error: Couldn'd find enough point to disambiguate. Returning best found match ..."
                 return best_aligned_point_array1.tolist()
             if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
-            #Hack
-            ambiguous_point_groups1, ambiguous_point_groups2 = reversed(ambiguous_point_groups1), reversed(ambiguous_point_groups2)
-            # End hack
             unique_points2 = unique_points2 + map(on_first_element, ambiguous_point_groups2)[0:missing_points]
-            for permutation in itertools.product([0,1], repeat=missing_points):
+            permutations_list1 = itertools.product(*map(range, [len(group) for group in ambiguous_point_groups1[0:missing_points] ]))
+            for permutation in permutations_list1:
                 ambiguous_unique_points1 = deepcopy(unique_points1)
                 for i, ambiguous_group in enumerate(ambiguous_point_groups1):
                     ambiguous_unique_points1.append(ambiguous_group[ permutation[i] ])

@@ -12,9 +12,10 @@ on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(
 MAX_N_COMPLEXITY = 3
 
 ALLOW_SHORTCUTS = False
+DEFAULT_SCORE_TOLERANCE = 0.01
 
 # Align points on points
-def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=1E-3):
+def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
 
     # Initializers
     distance_function, distance_array_function = rmsd if not use_AD else ad, rmsd_array if not use_AD else ad_array
@@ -51,16 +52,16 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     method_results = {}
     # Try the bruteforce method first
-    method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, silent=silent and False)
+    method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
-        method_results['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, show_graph=show_graph, silent=silent)
+        method_results['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
-    best_method = "kabsch" if method_results['kabsch']['score'] <= method_results['bruteforce']['score'] else "bruteforce"
+    best_method = "kabsch" if (method_results['kabsch']['score']) and (method_results['kabsch']['score'] <= method_results['bruteforce']['score']) else "bruteforce"
     best_match = method_results[best_method]['array']
     
-    if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() ]))
+    if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
     
     corrected_best_match = best_match - center_of_geometry(best_match) + center_of_geometries[1]
@@ -71,7 +72,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
 ### METHODS ###
 
-def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=rmsd_array, silent=True, score_tolerance=0.01):
+def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=rmsd_array, silent=True, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     reference_vectors = [None, None]
     for point in centered_arrays[0][:,0:3]:
@@ -113,7 +114,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
     if not silent: print "Info: Minimum Score from unflavoured algorithm is: {0}".format(best_score)
     return {'array': best_match.tolist(), 'score': best_score}
 
-def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False):
+def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     has_flavours = True if flavour_lists else False
     point_arrays = map(np.array, point_lists)
     if not silent: print "Info: Found element types. Trying flavoured 3-point Kabsch algorithm on flavoured elements types ..."
@@ -143,7 +144,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
         if len(ambiguous_point_groups[0]) <= missing_points:
             if not silent: print "Error: Couldn'd find enough point to disambiguate. Returning best found match ..."
-            return None
+            return {'array': None, 'score': None}
 
         if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
 
@@ -159,8 +160,8 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
                 if len(ambiguous_unique_points[0]) == 3: break
             
             # Align those three points using Kabsch algorithm
-            print ambiguous_unique_points[0]
-            print unique_points[1]
+            #print ambiguous_unique_points[0]
+            #print unique_points[1]
             P, Q = map(on_first_element, ambiguous_unique_points[0]), map(on_first_element, unique_points[1])
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc

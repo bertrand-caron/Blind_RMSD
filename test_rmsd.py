@@ -62,12 +62,12 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         molecule_name = test_datum['molecule_name']
 
         download_molecule_files(molecule_name, [test_datum['id1'], test_datum['id2']])
-        point_list1 = []
-        point_list2 = []
         m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
         m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='pdb'))
         point_list2 = [ atom.x[:] for atom in m2.atoms]
+
+        point_lists = [point_list1, point_list2]
 
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data1 = yaml.load(fh.read())
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='yml')) as fh: data2 = yaml.load(fh.read())
@@ -76,10 +76,12 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
         element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
 
+        flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
+
         sys.stderr.write("\n")
         logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1 = align.pointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+        aligned_point_list1 = align.pointsOnPoints(point_lists, silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))

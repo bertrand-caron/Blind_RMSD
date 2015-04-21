@@ -9,20 +9,17 @@ from scoring import rmsd_array, ad_array, rmsd, ad
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
-N_COMPLEXITY = 3
+MAX_N_COMPLEXITY = 3
 
 ALLOW_SHORTCUTS = False
 
 # Align points on points
-def pointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, element_list1=None, element_list2=None, flavour_list1=None, flavour_list2=None, show_graph=False, score_tolerance=1E-3):
-    point_lists = [point_list1, point_list2]
-    element_lists = [element_list1, element_list2]
-    flavour_lists = [flavour_list1, flavour_list2]
+def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=1E-3):
 
     # Initializers
     distance_function, distance_array_function = rmsd if not use_AD else ad, rmsd_array if not use_AD else ad_array
-    has_flavours = True if flavour_list1 and flavour_list2 else False
-    has_elements = True if element_list1 and element_list2 else False
+    has_flavours = True if all(flavour_lists) else False
+    has_elements = True if all(element_lists) else False
     if not silent: print # Add a commencing newline
 
     # Assert that the fitting make sense
@@ -52,17 +49,22 @@ def pointsOnPoints(point_list1, point_list2, silent=True, use_AD=False, element_
         assert_found_permutation(*centered_point_arrays, silent=silent)
         return (centered_point_arrays[0] + center_of_geometries[1]).tolist()
 
-    best_aligned_array = {}
+    method_results = {}
     # Try the bruteforce method first
-    best_aligned_array['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function)
+    method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, silent=silent and False)
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
-        best_aligned_array['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function)
+        method_results['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, show_graph=show_graph, silent=silent)
 
-    best_match = best_aligned_array['kabsch']['array'] if best_aligned_array['kabsch']['score'] <= best_aligned_array['bruteforce']['score'] else best_aligned_array['bruteforce']['array']
+    best_method = "kabsch" if method_results['kabsch']['score'] <= method_results['bruteforce']['score'] else "bruteforce"
+    best_match = method_results[best_method]['array']
+    
+    if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() ]))
+    if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
     
     corrected_best_match = best_match - center_of_geometry(best_match) + center_of_geometries[1]
+    assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
     assert_found_permutation(corrected_best_match, point_arrays[1], silent=silent)
     
     return corrected_best_match.tolist()
@@ -137,7 +139,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
         missing_points = 3 - len(unique_points[0])
 
-        ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= N_COMPLEXITY ], key=len), grouped_element_points )
+        ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len), grouped_element_points )
 
         if len(ambiguous_point_groups[0]) <= missing_points:
             if not silent: print "Error: Couldn'd find enough point to disambiguate. Returning best found match ..."
@@ -192,7 +194,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
     assert np.allclose( array1, array2), message.format(array1, array2)
 
-def assert_found_permutation(array1, array2, silent=True):
+def assert_found_permutation(array1, array2, silent=True, hard_fail=False):
     perm_list = []
     for i, point1_array in enumerate(array1[:,0:3]):
         min_dist, min_index = None, None
@@ -206,8 +208,14 @@ def assert_found_permutation(array1, array2, silent=True):
     #ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
 
     # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
-    assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
-    if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+    if hard_fail: 
+        assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
+        if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+    else:
+        if not sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]): 
+            if not silent: print "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
+        else:
+            if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
 
 def rotation_matrix_kabsch_on_points(points1, points2):
     # Align those three points using Kabsch algorithm

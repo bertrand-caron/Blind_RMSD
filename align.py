@@ -9,19 +9,23 @@ from scoring import rmsd_array, ad_array, rmsd, ad
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
-MAX_N_COMPLEXITY = 3
+# Kabsch Algorithm options
+MIN_N_UNIQUE_POINTS = 3
+MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
 
 # Align points on points
-def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
+def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE):
 
     # Initializers
     distance_function, distance_array_function = rmsd if not use_AD else ad, rmsd_array if not use_AD else ad_array
     has_flavours = True if all(flavour_lists) else False
     has_elements = True if all(element_lists) else False
+    has_bonds = True if bonds else False
     if not silent: print # Add a commencing newline
+    bonds = np.array(bonds)
 
     # Assert that the fitting make sense
     assert len(point_lists[0]) == len(point_lists[1]), "Error: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists))
@@ -34,6 +38,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         assert len(element_lists[0]) == len(element_lists[1]), "Error: Size of element lists doesn't match: {0} and {1}".format(*map(len, element_lists))
         assert len(element_lists[0]) == len(point_lists[1]), "Error: Size of element lists doesn't match size of point lists: {0} and {1}".format(*map(len, [element_lists[0], point_lists[1]]))
         assert sorted(element_lists[0]) == sorted(element_lists[1]), "Error: There is not a one to one mapping of the element sets: {0} and {1}".format(*map(sorted, element_lists))
+    if has_bonds:
+        assert( bonds.shape == map(len, point_lists) ), "Error: Bonds array does have have the expected shape: {0} != {1}".format(bonds.shape, map(len, point_lists))
 
     point_arrays = map(np.array, point_lists)
     center_of_geometries = map(center_of_geometry, point_arrays)
@@ -117,7 +123,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     has_flavours = True if flavour_lists else False
     point_arrays = map(np.array, point_lists)
-    if not silent: print "Info: Found element types. Trying flavoured 3-point Kabsch algorithm on flavoured elements types ..."
+    if not silent: print "Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
 
     # Try to find three unique elements type points
     if has_flavours:
@@ -135,10 +141,10 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
     if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points[0])
 
-    if len(unique_points[0]) < 3:
+    if len(unique_points[0]) < MIN_N_UNIQUE_POINTS:
         if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Trying to disambiguate enough points to make a fit."
 
-        missing_points = 3 - len(unique_points[0])
+        missing_points = MIN_N_UNIQUE_POINTS - len(unique_points[0])
 
         ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len), grouped_element_points )
 
@@ -157,7 +163,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
             ambiguous_unique_points = [deepcopy(unique_points[0])]
             for i, ambiguous_group in enumerate(ambiguous_point_groups[0]):
                 ambiguous_unique_points[0].append(ambiguous_group[ permutation[i] ])
-                if len(ambiguous_unique_points[0]) == 3: break
+                if len(ambiguous_unique_points[0]) == MIN_N_UNIQUE_POINTS: break
             
             # Align those three points using Kabsch algorithm
             #print ambiguous_unique_points[0]
@@ -168,13 +174,13 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
             current_score = distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
             if (not best_score) or current_score <= best_score:
                 best_match, best_score = kabsched_list1, current_score
-                if not silent: print "    Info: Best RMSD so far with random 3-point Kabsch fitting: {0}".format(best_score)
+                if not silent: print "    Info: Best RMSD so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
             if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_arrays[0] - Pc, "P1-Pc"), (point_arrays[1] - Qc, "P2-Qc")])
             
-        if not silent: print "    Info: Returning best match with random 3-point Kabsch fitting (Score: {0})".format(best_score)
+        if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)
         return {'array': best_match.tolist(), 'score': best_score}
     else:
-        assert map(on_second_element, unique_points[0][0:3]) == map(on_second_element, unique_points[1][0:3]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points[0][0:3]), map(on_second_element, unique_points[1][0:3]))
+        assert map(on_second_element, unique_points[0][0:MIN_N_UNIQUE_POINTS]) == map(on_second_element, unique_points[1][0:MIN_N_UNIQUE_POINTS]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points[0][0:MIN_N_UNIQUE_POINTS]), map(on_second_element, unique_points[1][0:MIN_N_UNIQUE_POINTS]))
         
         # Align those three points using Kabsch algorithm
         P, Q = map(on_first_element, unique_points[0]), map(on_first_element, unique_points[1])

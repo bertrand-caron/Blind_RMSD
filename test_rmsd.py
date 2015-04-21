@@ -31,7 +31,7 @@ DOWNLOAD_TEMPLATES = { 'pdb': 'http://compbio.biosci.uq.edu.au/atb/download.py?m
                        'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/molecules/mol_data.py?molid={molid}',
                      }
 
-SHOW_GRAPH = True
+SHOW_GRAPH = False
 
 # Differentiate -1's
 def split_equivalence_group(eq_list):
@@ -81,7 +81,7 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         sys.stderr.write("\n")
         logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1 = align.pointsOnPoints(point_lists, silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+        aligned_point_list1 = align.pointsOnPoints(point_lists, silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=[ [0], [1] ] )
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))

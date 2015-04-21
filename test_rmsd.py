@@ -1,30 +1,28 @@
 import unittest
 import sys
 import os
-import rmsd
 import logging
-import math
-from Vector import rotaxis2m, Vector, rotmat
-from numpy import pi, array, dot, sqrt
-from random import uniform
 import pmx
-from copy import deepcopy
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
 import yaml
-sys.path.append("../")
+#sys.path.append("../")
 import urllib2
-from os.path import exists, dirname, isdir
+from os.path import exists, dirname
+
+import align
+from scoring import rmsd, ad
 
 numerical_tolerance = 1e-5
+scoring_function = rmsd if True else ad
 
 def test_alignment_generator(points1, points2, expected_rmsd):
     def test(self):
         sys.stderr.write("\n")
-        logging.info("RMSD before alignment: {0:.4f}".format(rmsd.rmsd(points1, points2)))
-        points1_aligned = rmsd.alignPointsOnPoints(points1, points2)
-        logging.info("RMSD after alignment: {0:.4f}".format(rmsd.rmsd(points1_aligned, points2)))
-        logging.info("Maximum Tolerated RMSD: {0:.4f}".format(expected_rmsd))
-        self.assertLessEqual( rmsd.rmsd(points1_aligned, points2), expected_rmsd)
+        logging.info("Score before alignment: {0:.4f}".format(scoring_function(points1, points2)))
+        points1_aligned = align.pointsOnPoints(points1, points2)
+        logging.info("Score after alignment: {0:.4f}".format(scoring_function(points1_aligned, points2)))
+        logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
+        self.assertLessEqual( scoring_function(points1_aligned, points2), expected_rmsd)
     return test
 
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
@@ -79,22 +77,21 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
 
         sys.stderr.write("\n")
-        logging.info("RMSD before alignment: {0:.4f}".format(rmsd.rmsd(point_list1, point_list2)))
+        logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1 = rmsd.alignPointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=SHOW_GRAPH, rmsd_tolerance=expected_rmsd)
+        aligned_point_list1 = align.pointsOnPoints(point_list1, point_list2, silent=False, use_AD=False, element_list1=element_list1, element_list2=element_list2, flavour_list1=flavour_list1, flavour_list2=flavour_list2, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))
 
-        logging.info("RMSD after alignment: {0:.4f}".format(rmsd.rmsd(aligned_point_list1, point_list2)))
-        logging.info("Maximum Tolerated RMSD: {0:.4f}".format(expected_rmsd))
-        self.assertLessEqual( rmsd.rmsd(aligned_point_list1, point_list2), expected_rmsd)
+        logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, point_list2)))
+        logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
+        self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)
     return test
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):
         if result.failures or result.errors:
-          #print "Aborting due to first failed test ..."
             pass
         else:
             super(Test_RMSD, self).run(result)

@@ -10,11 +10,12 @@ on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-MIN_N_UNIQUE_POINTS = 3
+MIN_N_UNIQUE_POINTS = 5
 MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
+FORCE_KABSCH_IF_POSSIBLE = True
 
 # Align points on points
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE):
@@ -65,7 +66,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if has_elements:
         method_results['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
-    best_method = "kabsch" if (method_results['kabsch']['score']) and (method_results['kabsch']['score'] <= method_results['bruteforce']['score']) else "bruteforce"
+    best_method = "kabsch" if method_results['kabsch']['score'] and (method_results['kabsch']['score'] <= method_results['bruteforce']['score'] or FORCE_KABSCH_IF_POSSIBLE) else "bruteforce"
     best_match = method_results[best_method]['array']
     
     if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
@@ -160,11 +161,14 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         
         best_match, best_score = None, None
         for permutation in permutations_list:
-
             ambiguous_unique_points = [deepcopy(unique_points[0])]
             for i, ambiguous_group in enumerate(ambiguous_point_groups[0]):
-                ambiguous_unique_points[0].append(ambiguous_group[ permutation[i] ])
+                new_point = ambiguous_group[ permutation[i] ]
+                ambiguous_unique_points[0].append(new_point)
                 if len(ambiguous_unique_points[0]) == MIN_N_UNIQUE_POINTS: break
+                #else:
+                #    while len(ambiguous_unique_points[0]) < MIN_N_UNIQUE_POINTS and True:
+                #        new_point = 
             
             # Align those three points using Kabsch algorithm
             #print ambiguous_unique_points[0]
@@ -175,7 +179,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
             current_score = distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
             if (not best_score) or current_score <= best_score:
                 best_match, best_score = kabsched_list1, current_score
-                if not silent: print "    Info: Best RMSD so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
+                if not silent: print "    Info: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
             if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_arrays[0] - Pc, "P1-Pc"), (point_arrays[1] - Qc, "P2-Qc")])
             
         if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)

@@ -77,7 +77,6 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
 
         flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
-        print data1['atoms']
         
         def bond_matrix(data):
             def bond_line(data):
@@ -96,6 +95,7 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
 
         logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, point_list2)))
         logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
+        logging.info("To debug these results, run 'pymol testing/{molecule_name}/{molecule_name}*.pdb'".format(molecule_name=molecule_name))
         self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)
     return test
 

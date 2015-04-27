@@ -25,7 +25,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     has_elements = True if all(element_lists) else False
     has_bonds = True if bonds else False
     if not silent: print # Add a commencing newline
-    bonds = np.array(bonds)
+    bonds = map(np.array, bonds)
 
     # Assert that the fitting make sense
     assert len(point_lists[0]) == len(point_lists[1]), "Error: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists))
@@ -39,7 +39,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         assert len(element_lists[0]) == len(point_lists[1]), "Error: Size of element lists doesn't match size of point lists: {0} and {1}".format(*map(len, [element_lists[0], point_lists[1]]))
         assert sorted(element_lists[0]) == sorted(element_lists[1]), "Error: There is not a one to one mapping of the element sets: {0} and {1}".format(*map(sorted, element_lists))
     if has_bonds:
-        assert( bonds.shape == map(len, point_lists) ), "Error: Bonds array does have have the expected shape: {0} != {1}".format(bonds.shape, map(len, point_lists))
+        assert( bonds[0].shape == tuple(map(len, point_lists)) ), "Error: Bonds array does have have the expected shape: {0} != {1}".format(bonds[0].shape, map(len, point_lists))
+        assert( bonds[1].shape == tuple(map(len, point_lists)) ), "Error: Bonds array does have have the expected shape: {0} != {1}".format(bonds[1].shape, map(len, point_lists))
 
     point_arrays = map(np.array, point_lists)
     center_of_geometries = map(center_of_geometry, point_arrays)

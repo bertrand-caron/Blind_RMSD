@@ -77,11 +77,19 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
 
         flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
+        print data1['atoms']
+        
+        def bond_matrix(data):
+            def bond_line(data):
+                return [ 0 if index not in atom['conn'] else 1 for index in map(lambda x:x+1, range(0, len(data['atoms'])))]
+            return [ bond_line(data) for _, atom in sorted(data['atoms'].items())]
+               
+        bonds = map(bond_matrix, [data1, data2])
 
         sys.stderr.write("\n")
         logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1 = align.pointsOnPoints(point_lists, silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=[ [0], [1] ] )
+        aligned_point_list1 = align.pointsOnPoints(point_lists, silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))

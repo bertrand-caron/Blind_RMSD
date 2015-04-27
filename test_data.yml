@@ -7,6 +7,9 @@
 - molecule_name: ethanol
   id1: 22354
   id2: 23009
+- molecule_name: butane
+  id1: 19838
+  id2: 19839
 #- molecule_name: sulfuric_acid
 #  id1: 1745
 #  id2: 20681

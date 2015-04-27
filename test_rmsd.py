@@ -12,6 +12,7 @@ from os.path import exists, dirname
 import align
 from scoring import rmsd, ad
 from copy import deepcopy
+import shutil
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd if True else ad
@@ -19,7 +20,7 @@ scoring_function = rmsd if True else ad
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 DOWNLOAD_TEMPLATES = { 'pdb': 'http://compbio.biosci.uq.edu.au/atb/download.py?molid={molid}&outputType=top&dbfile=pdb_fromuser',
-                       'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/molecules/mol_data.py?molid={molid}',
+                       'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/current/molecules/mol_data.py?molid={molid}&api_token=E1A54AB5008F1E772EBC3A51BAEE98BF',
                      }
 
 SHOW_GRAPH = False
@@ -38,15 +39,20 @@ def split_equivalence_group(eq_list):
 def download_molecule_files(molecule_name, molids):
     for version in [1,2]:
         molid = molids[version - 1]
-        for extension in ['pdb', 'yml']:
-            file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
-            if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
-            if not exists(file_name):
-                with open(file_name, 'w') as fh:
-                    download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid)
-                    print "Downloading: {0}".format(download_url)
-                    response = urllib2.urlopen(download_url)
-                    fh.write( response.read() )
+        try:
+            for extension in ['pdb', 'yml']:
+                file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
+                if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
+                if not exists(file_name):
+                    with open(file_name, 'w') as fh:
+                        download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid)
+                        print "Downloading: {0}".format(download_url)
+                        response = urllib2.urlopen(download_url)
+                        fh.write( response.read() )
+        except Exception, e:
+            directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
+            if exists(directory): shutil.rmtree(directory)
+            raise e
 
 def molecule_test_alignment_generator(test_datum, expected_rmsd):
     def test(self):

@@ -61,6 +61,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     # Try the bruteforce method first
     method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
     method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
+    method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
@@ -152,7 +153,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len), grouped_element_points )
 
         if len(ambiguous_point_groups[0]) <= missing_points:
-            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(M=len(ambiguous_point_groups[0]), P=len(unique_points[0]), N=MIN_N_UNIQUE_POINTS)
+            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=len(ambiguous_point_groups[0]), M=len(unique_points[0]), N=MIN_N_UNIQUE_POINTS)
             return {'array': None, 'score': None, 'reference_array': point_arrays[1]}
 
         if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
@@ -203,6 +204,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
 def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
+
     P, Q = point_arrays
     U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
     kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
@@ -210,6 +212,35 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
     current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
     if not silent: print "    Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
     return {'array': current_match.tolist(), 'score': current_score}
+
+
+def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
+    N_BRUTEFORCE_KABSCH = 3
+    silent = True
+
+    point_arrays = map(np.array, point_lists)
+    N_points = point_arrays[0].shape[0]
+
+    permutation_list = [ perm for perm in itertools.product(*map(lambda x: range(x),range(N_points,N_points-N_BRUTEFORCE_KABSCH,-1))) if perm[0] != perm[1] and perm[1]!= perm[2] ] # Selecting three points at random amongst N
+
+    unique_points = [None, point_arrays[1][0:N_BRUTEFORCE_KABSCH, 0:3] ]
+    best_match, best_score = None, None
+
+    for permutation in permutation_list:
+        unique_points[0] = map(lambda index: point_arrays[0][index, 0:3], permutation)
+        P, Q = unique_points
+        U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
+        kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
+
+        current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
+
+        current_score = distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
+        if (not best_score) or current_score <= best_score:
+            best_match, best_score = kabsched_list1, current_score
+            if not silent: print "    Info: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(best_score=best_score, N=N_BRUTEFORCE_KABSCH)
+    if not silent: print "    Info: Minimum Score from bruteforce Kabsch method is: {0}".format(best_score)
+    return {'array': current_match.tolist(), 'score': best_score}
+
 #################
 #### HELPERS ####
 #################

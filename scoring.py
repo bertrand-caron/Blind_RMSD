@@ -8,6 +8,7 @@ def rmsd(point_list1, point_list2):
     return rmsd_array(point_array1, point_array2)
 
 def rmsd_array(point_array1, point_array2, silent=True):
+    assert point_array1.shape == point_array2.shape, "Error: Won't compute RMSD on arrays with diference sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
     distance_matrix = get_distance_matrix(point_array1, point_array2)
     if not silent: print "    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0])
     
@@ -26,6 +27,7 @@ def ad(point_list1, point_list2):
     return ad_array(point_array1, point_array2)
 
 def ad_array(point_array1, point_array2, silent=True):
+    assert point_array1.shape == point_array2.shape, "Error: Won't compute AD on arrays with diference sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
     distance_matrix = get_distance_matrix(point_array1, point_array2)
     ad = max( np.min( distance_matrix, axis=0 ) )
     if not silent: print "    Info: New AD: {0}".format(ad)

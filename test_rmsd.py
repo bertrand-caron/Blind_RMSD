@@ -11,19 +11,10 @@ from os.path import exists, dirname
 
 import align
 from scoring import rmsd, ad
+from copy import deepcopy
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd if True else ad
-
-def test_alignment_generator(points1, points2, expected_rmsd):
-    def test(self):
-        sys.stderr.write("\n")
-        logging.info("Score before alignment: {0:.4f}".format(scoring_function(points1, points2)))
-        points1_aligned = align.pointsOnPoints(points1, points2)
-        logging.info("Score after alignment: {0:.4f}".format(scoring_function(points1_aligned, points2)))
-        logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
-        self.assertLessEqual( scoring_function(points1_aligned, points2), expected_rmsd)
-    return test
 
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
@@ -88,12 +79,13 @@ def molecule_test_alignment_generator(test_datum, expected_rmsd):
         sys.stderr.write("\n")
         logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1 = align.pointsOnPoints(point_lists, silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
+        aligned_point_list1, reference_array = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
         for i, atom in enumerate(m1.atoms):
             atom.x = aligned_point_list1[i]
         m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))
 
         logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, point_list2)))
+        logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, reference_array)))
         logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
         logging.info("To debug these results, run 'pymol testing/{molecule_name}/{molecule_name}*.pdb'".format(molecule_name=molecule_name))
         self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)

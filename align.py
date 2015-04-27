@@ -10,7 +10,7 @@ on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-MIN_N_UNIQUE_POINTS = 5
+MIN_N_UNIQUE_POINTS = 3
 MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
@@ -25,7 +25,6 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     has_flavours = True if all(flavour_lists) else False
     has_elements = True if all(element_lists) else False
     has_bonds = True if bonds else False
-    if not silent: print # Add a commencing newline
     bonds = map(np.array, bonds)
 
     # Assert that the fitting make sense
@@ -77,7 +76,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
     assert_found_permutation(corrected_best_match, point_arrays[1], silent=silent)
     
-    return corrected_best_match.tolist()
+    print "RMSD: {0}".format(distance_function(corrected_best_match, point_arrays[1] + center_of_geometries[1] ))
+    return corrected_best_match.tolist(), point_arrays[1]
 
 ### METHODS ###
 
@@ -98,7 +98,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
             reference_vectors[1] = Vector(point_arrays[1])
 
             r = rotmat(*reversed(reference_vectors))
-            if not silent: print "Info: Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
+            if not silent: print "    Info: Rotation parameters: {0} deg, axis {1}".format(m2rotaxis(r)[0]*180/np.pi, m2rotaxis(r)[1])
             assert m2rotaxis(r)[0] != 180., "Error: 180 degree rotation matrix currently not working"
 
             rotated_point_arrays = [np.dot(centered_arrays[0], r)]
@@ -115,20 +115,20 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
                 best_match, best_score = rotated_point_arrays[0], current_score
 
             if best_score <= score_tolerance and ALLOW_SHORTCUTS:
-                if not silent: print "Info: Found a really good match (Score={0}) worth aborting now. Exiting successfully.".format(best_score)
+                if not silent: print "    Info: Found a really good match (Score={0}) worth aborting now. Exiting successfully.".format(best_score)
                 break
         # Only iterate over the first point of centered_arrays[0]
         break
     
-    if not silent: print "Info: Minimum Score from unflavoured algorithm is: {0}".format(best_score)
-    return {'array': best_match.tolist(), 'score': best_score}
+    if not silent: print "    Info: Minimum Score from bruteforce algorithm is: {0}".format(best_score)
+    return {'array': best_match.tolist(), 'score': best_score, 'reference_array': centered_arrays[1]}
 
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     has_flavours = True if flavour_lists else False
     point_arrays = map(np.array, point_lists)
-    if not silent: print "Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
+    if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
 
-    # Try to find three unique elements type points
+    # Try to find MIN_N_UNIQUE_POINTS unique elements type points
     if has_flavours:
         element_points = map(lambda index: zip(point_lists[index], element_lists[index], flavour_lists[index]), [0,1])
         grouped_flavour_lists = [group_by(flavour_lists[0], on_self), group_by(flavour_lists[1], on_self)]
@@ -145,15 +145,15 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
     if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points[0])
 
     if len(unique_points[0]) < MIN_N_UNIQUE_POINTS:
-        if not silent: print "    Warning: Unable to find at least three unique point with the elements provided. Trying to disambiguate enough points to make a fit."
+        if not silent: print "    Warning: Unable to find at least {N} unique point with the elements provided. Trying to disambiguate enough points to make a fit.".format(N=MIN_N_UNIQUE_POINTS)
 
         missing_points = MIN_N_UNIQUE_POINTS - len(unique_points[0])
 
         ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len), grouped_element_points )
 
         if len(ambiguous_point_groups[0]) <= missing_points:
-            if not silent: print "Error: Couldn'd find enough point to disambiguate. Returning best found match ..."
-            return {'array': None, 'score': None}
+            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(M=len(ambiguous_point_groups[0]), P=len(unique_points[0]), N=MIN_N_UNIQUE_POINTS)
+            return {'array': None, 'score': None, 'reference_array': point_arrays[1]}
 
         if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
 
@@ -174,6 +174,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
             # Align those three points using Kabsch algorithm
             #print ambiguous_unique_points[0]
             #print unique_points[1]
+            if not silent: print '        Info: Attempting a fit between points {0} and {1}'.format(ambiguous_unique_points[0], unique_points[1])
             P, Q = map(on_first_element, ambiguous_unique_points[0]), map(on_first_element, unique_points[1])
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
@@ -184,11 +185,11 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
             if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_arrays[0] - Pc, "P1-Pc"), (point_arrays[1] - Qc, "P2-Qc")])
             
         if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)
-        return {'array': best_match.tolist(), 'score': best_score}
+        return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
     else:
         assert map(on_second_element, unique_points[0][0:MIN_N_UNIQUE_POINTS]) == map(on_second_element, unique_points[1][0:MIN_N_UNIQUE_POINTS]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points[0][0:MIN_N_UNIQUE_POINTS]), map(on_second_element, unique_points[1][0:MIN_N_UNIQUE_POINTS]))
         
-        # Align those three points using Kabsch algorithm
+        # Align those MIN_N_UNIQUE_POINTS points using Kabsch algorithm
         P, Q = map(on_first_element, unique_points[0]), map(on_first_element, unique_points[1])
         U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
         kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
@@ -198,7 +199,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
         
         if not silent: print "    Info: Klabsch algorithm on unique element types found a better match with a Score of {0}".format(current_score)
-        return {'array': current_match.tolist(), 'score': current_score}
+        return {'array': current_match.tolist(), 'score': current_score, 'reference_array': point_arrays[1]}
 
 def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
@@ -207,7 +208,7 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
     kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
 
     current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
-    if not silent: print "Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
+    if not silent: print "    Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
     return {'array': current_match.tolist(), 'score': current_score}
 #################
 #### HELPERS ####
@@ -240,7 +241,7 @@ def assert_found_permutation(array1, array2, silent=True, hard_fail=False):
             if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
 
 def rotation_matrix_kabsch_on_points(points1, points2):
-    # Align those three points using Kabsch algorithm
+    # Align those points using Kabsch algorithm
     P, Q = np.array(points1), np.array(points2)
     #print P
     #print Q

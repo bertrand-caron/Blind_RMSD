@@ -61,6 +61,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     method_results = {}
     # Try the bruteforce method first
     method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
+    method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
@@ -198,7 +199,16 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         
         if not silent: print "    Info: Klabsch algorithm on unique element types found a better match with a Score of {0}".format(current_score)
         return {'array': current_match.tolist(), 'score': current_score}
-    
+
+def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
+    point_arrays = map(np.array, point_lists)
+    P, Q = point_arrays
+    U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
+    kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
+
+    current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
+    if not silent: print "Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
+    return {'array': current_match.tolist(), 'score': current_score}
 #################
 #### HELPERS ####
 #################

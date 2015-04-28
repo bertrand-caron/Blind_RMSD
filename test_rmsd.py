@@ -20,7 +20,7 @@ scoring_function = rmsd if True else ad
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 DOWNLOAD_TEMPLATES = { 'pdb': 'http://compbio.biosci.uq.edu.au/atb/download.py?molid={molid}&outputType=top&dbfile=pdb_fromuser',
-                       'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/current/molecules/mol_data.py?molid={molid}&api_token=E1A54AB5008F1E772EBC3A51BAEE98BF',
+                       'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/current/molecules/generate_mol_data.py?molid={molid}&api_token=E1A54AB5008F1E772EBC3A51BAEE98BF',
                      }
 
 SHOW_GRAPH = False

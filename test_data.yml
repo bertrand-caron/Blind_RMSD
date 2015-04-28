@@ -1,20 +1,25 @@
 - molecule_name: methanol
+  InChI: 'InChI=1S/CH4O/c1-2/h2H,1H3'
   id1: 15607
   id2: 19901
   expected_rmsd: 0.05
 - molecule_name: benzene
+  InChI: 'InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H'
   id1: 21364
   id2: 8652
   expected_rmsd: 0.05
 - molecule_name: ethanol
+  InChI: 'InChI=1S/C2H5O/c1-2-3/h2H2,1H3'
   id1: 22354
   id2: 23009
   expected_rmsd: 0.05
 - molecule_name: butane
+  InChI: 'InChI=1S/C4H10/c1-3-4-2/h3-4H2,1-2H3'
   id1: 19838
   id2: 19839
   expected_rmsd: 0.7
 - molecule_name: sulfuric_acid
+  InChI: 'InChI=1S/O4S/c1-5(2,3)4'
   id1: 20682
   id2: 20681
   expected_rmsd: 0.05

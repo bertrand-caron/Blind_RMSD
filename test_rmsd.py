@@ -21,9 +21,12 @@ FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 HOST = 'http://compbio.biosci.uq.edu.au/atb-new'
 #HOST = 'http://scmb-atbweb.biosci.uq.edu.au/atb'
+API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
+
+SEARCH_API_URL = '{HOST}/api/current/molecules/search.py?InChI={inchi}&api_token={API_TOKEN}'
 
 DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&dbfile=pdb_fromuser',
-                       'yml': '{HOST}/api/current/molecules/generate_mol_data.py?molid={molid}&api_token=E1A54AB5008F1E772EBC3A51BAEE98BF',
+                       'yml': '{HOST}/api/current/molecules/generate_mol_data.py?molid={molid}&api_token={API_TOKEN}',
                      }
 
 SHOW_GRAPH = False
@@ -39,16 +42,24 @@ def split_equivalence_group(eq_list):
             accu += 1
     return split_eq_list
 
-def download_molecule_files(molecule_name, molids):
-    for version in [1,2]:
-        molid = molids[version - 1]
+def IDs_for_InChI(inchi):
+    url = SEARCH_API_URL.format(HOST=HOST, inchi=inchi, API_TOKEN=API_TOKEN)
+    print "Getting molIDs for InChI {inchi} at: {url}".format(inchi=inchi, url=url)
+    response = urllib2.urlopen(url)
+    data = yaml.load(response.read())
+    return map(lambda molecule: molecule['molid'], data['molecules'])
+
+def download_molecule_files(molecule_name, inchi):
+    molids =  IDs_for_InChI(inchi)
+    print molids
+    for version, molid  in enumerate(molids):
         try:
             for extension in ['pdb', 'yml']:
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
                 if not exists(file_name):
                     with open(file_name, 'w') as fh:
-                        download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid, HOST=HOST)
+                        download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid, HOST=HOST, API_TOKEN=API_TOKEN)
                         print "Downloading: {0}".format(download_url)
                         response = urllib2.urlopen(download_url)
                         fh.write( response.read() )
@@ -62,7 +73,7 @@ def molecule_test_alignment_generator(test_datum):
         molecule_name = test_datum['molecule_name']
         expected_rmsd = test_datum['expected_rmsd']
 
-        download_molecule_files(molecule_name, [test_datum['id1'], test_datum['id2']])
+        download_molecule_files(molecule_name, test_datum['InChI'])
         m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
         m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='pdb'))

@@ -6,13 +6,16 @@ from charnley_rmsd import kabsch
 from copy import deepcopy
 from scoring import rmsd_array, ad_array, rmsd, ad
 from permutations import N_amongst_array
+import pprint
+
+pp = pprint.PrettyPrinter(indent=2)
 
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-MIN_N_UNIQUE_POINTS = 3
+MIN_N_UNIQUE_POINTS = 4
 MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
@@ -167,7 +170,12 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
         missing_points = MIN_N_UNIQUE_POINTS - len(unique_points[0])
 
-        ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len), grouped_element_points )
+        ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len),
+                                     grouped_element_points )
+        # Order them by number of largest atoms first
+        ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0][1].upper() ], reverse=True),
+                                     [0,1])
+        pp.pprint(ambiguous_point_groups)
 
         N_ambiguous_points = sum( map(len, ambiguous_point_groups[0]))
 
@@ -190,8 +198,10 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
                 N_list.append( min(len(group), missing_points-ambiguous_points) )
                 ambiguous_points += N_list[-1]
 
+        if not silent: print "    Info: Ambiguous groups are: {0} (number of points taken in each group: {1})".format(ambiguous_point_groups[0], N_list)
+
         permutation_lists = map(lambda group, N: permutations(atom_indexes(group), r=N),
-                                ambiguous_point_groups[1],
+                                ambiguous_point_groups[0],
                                 N_list)
 
         complete_permutation_list = product(*permutation_lists)
@@ -209,6 +219,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
                     ambiguous_unique_points[0].append(new_point)
 
             if not silent: print '        Info: Attempting a fit between points {0} and {1}'.format(ambiguous_unique_points[0], unique_points[1])
+            assert( map(on_second_element, ambiguous_unique_points[0]) == map(on_second_element, unique_points[1])), "Error: Trying to match points whose elements don't match: {0} != {1}".format(map(on_second_element, ambiguous_unique_points[0]), map(on_second_element, unique_points[1]))
             P, Q = map(on_first_element, ambiguous_unique_points[0]), map(on_first_element, unique_points[1])
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc

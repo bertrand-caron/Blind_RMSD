@@ -19,8 +19,11 @@ scoring_function = rmsd if True else ad
 
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
-DOWNLOAD_TEMPLATES = { 'pdb': 'http://compbio.biosci.uq.edu.au/atb/download.py?molid={molid}&outputType=top&dbfile=pdb_fromuser',
-                       'yml': 'http://compbio.biosci.uq.edu.au/atb-new/api/current/molecules/generate_mol_data.py?molid={molid}&api_token=E1A54AB5008F1E772EBC3A51BAEE98BF',
+HOST = 'http://compbio.biosci.uq.edu.au/atb-new'
+#HOST = 'http://scmb-atbweb.biosci.uq.edu.au/atb'
+
+DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&dbfile=pdb_fromuser',
+                       'yml': '{HOST}/api/current/molecules/generate_mol_data.py?molid={molid}&api_token=E1A54AB5008F1E772EBC3A51BAEE98BF',
                      }
 
 SHOW_GRAPH = False
@@ -45,7 +48,7 @@ def download_molecule_files(molecule_name, molids):
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
                 if not exists(file_name):
                     with open(file_name, 'w') as fh:
-                        download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid)
+                        download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid, HOST=HOST)
                         print "Downloading: {0}".format(download_url)
                         response = urllib2.urlopen(download_url)
                         fh.write( response.read() )
@@ -54,9 +57,10 @@ def download_molecule_files(molecule_name, molids):
             if exists(directory): shutil.rmtree(directory)
             raise e
 
-def molecule_test_alignment_generator(test_datum, expected_rmsd):
+def molecule_test_alignment_generator(test_datum):
     def test(self):
         molecule_name = test_datum['molecule_name']
+        expected_rmsd = test_datum['expected_rmsd']
 
         download_molecule_files(molecule_name, [test_datum['id1'], test_datum['id2']])
         m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='pdb'))
@@ -101,6 +105,7 @@ class Test_RMSD(unittest.TestCase):
     def run(self, result=None):
         if result.failures or result.errors:
             pass
+            #super(Test_RMSD, self).run(result)
         else:
             super(Test_RMSD, self).run(result)
 
@@ -113,7 +118,7 @@ if __name__ == "__main__":
         test_data = yaml.load(fh.read())
         print "Test data is:\n{0}\n".format(yaml.dump(test_data))
         for test_datum in test_data:
-            test = molecule_test_alignment_generator(test_datum, 0.15)
+            test = molecule_test_alignment_generator(test_datum)
             setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

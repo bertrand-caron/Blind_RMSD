@@ -1,12 +1,14 @@
 import numpy as np
 from Vector import Vector, rotmat, m2rotaxis
-import itertools
+from itertools import product, groupby, permutations
 from functools import partial
 from charnley_rmsd import kabsch
 from copy import deepcopy
 from scoring import rmsd_array, ad_array, rmsd, ad
+from permutations import N_amongst_array
 
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
+on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
@@ -83,6 +85,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 ### METHODS ###
 
 def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=rmsd_array, silent=True, score_tolerance=DEFAULT_SCORE_TOLERANCE):
+    silent=True
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     reference_vectors = [None, None]
     for point in centered_arrays[0][:,0:3]:
@@ -126,16 +129,17 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
 
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     has_flavours = True if flavour_lists else False
+    N_points = len(point_lists[0])
     point_arrays = map(np.array, point_lists)
     if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
 
     # Try to find MIN_N_UNIQUE_POINTS unique elements type points
     if has_flavours:
-        element_points = map(lambda index: zip(point_lists[index], element_lists[index], flavour_lists[index]), [0,1])
+        element_points = map(lambda index: zip(point_lists[index], element_lists[index], flavour_lists[index], range(N_points)), [0,1])
         grouped_flavour_lists = [group_by(flavour_lists[0], on_self), group_by(flavour_lists[1], on_self)]
         grouping_functions = map( lambda index: partial(on_second_element_and_flavour, grouped_flavour_lists[index]) if has_flavours else on_second_element, [0,1])
     else:
-        element_points = map(lambda index: zip(point_lists[index], element_lists[index]), [0,1])
+        element_points = map(lambda index: zip(point_lists[index], element_lists[index], range(N_points)), [0,1])
         grouping_functions = [on_second_element, on_second_element]
 
     grouped_element_points = map( lambda index:group_by(element_points[index], grouping_functions[index]), [0,1])
@@ -152,29 +156,45 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
         ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len), grouped_element_points )
 
-        if len(ambiguous_point_groups[0]) <= missing_points:
-            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=len(ambiguous_point_groups[0]), M=len(unique_points[0]), N=MIN_N_UNIQUE_POINTS)
+        N_ambiguous_points = sum( map(len, ambiguous_point_groups[0]))
+
+        if N_ambiguous_points <= missing_points:
+            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=N_ambiguous_points, M=len(unique_points[0]), N=MIN_N_UNIQUE_POINTS)
             return {'array': None, 'score': None, 'reference_array': point_arrays[1]}
 
-        if not silent: print "    Info: Found enough point to disambiguate. Trying kabsch algorithm ..."
+        if not silent: print "    Info: Found enough point ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points)
 
-        unique_points[1] += map(on_first_element, ambiguous_point_groups[1])[0:missing_points]
-        permutations_list = itertools.product(*map(range, [len(group) for group in ambiguous_point_groups[0][0:missing_points] ]))
-        
+        permutations_list = []
+        atom_indexes = lambda group: map(on_fourth_element, group)
+
+        # For each ambiguous group
+        ambiguous_points = 0
+        N_list = []
+        for group in ambiguous_point_groups[0]:
+            if ambiguous_points == missing_points:
+                N_list.append( 0 )
+            else:
+                N_list.append( min(len(group), missing_points-ambiguous_points) )
+                ambiguous_points += N_list[-1]
+
+        permutation_lists = map(lambda group, N: permutations(atom_indexes(group), r=N),
+                                ambiguous_point_groups[1],
+                                N_list)
+
+        complete_permutation_list = product(*permutation_lists)
+        #print list(complete_permutation_list)
+
+        for group, N in zip(ambiguous_point_groups[1], N_list):
+            unique_points[1] += group[0:N]
+
         best_match, best_score = None, None
-        for permutation in permutations_list:
+        for group_permutations in complete_permutation_list:
             ambiguous_unique_points = [deepcopy(unique_points[0])]
-            for i, ambiguous_group in enumerate(ambiguous_point_groups[0]):
-                new_point = ambiguous_group[ permutation[i] ]
-                ambiguous_unique_points[0].append(new_point)
-                if len(ambiguous_unique_points[0]) == MIN_N_UNIQUE_POINTS: break
-                #else:
-                #    while len(ambiguous_unique_points[0]) < MIN_N_UNIQUE_POINTS and True:
-                #        new_point = 
-            
-            # Align those three points using Kabsch algorithm
-            #print ambiguous_unique_points[0]
-            #print unique_points[1]
+            for group in group_permutations:
+                for index in group:
+                    new_point = element_points[0][index]
+                    ambiguous_unique_points[0].append(new_point)
+
             if not silent: print '        Info: Attempting a fit between points {0} and {1}'.format(ambiguous_unique_points[0], unique_points[1])
             P, Q = map(on_first_element, ambiguous_unique_points[0]), map(on_first_element, unique_points[1])
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
@@ -183,8 +203,9 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
             if (not best_score) or current_score <= best_score:
                 best_match, best_score = kabsched_list1, current_score
                 if not silent: print "    Info: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
+                if current_score <= score_tolerance: return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
             if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_arrays[0] - Pc, "P1-Pc"), (point_arrays[1] - Qc, "P2-Qc")])
-            
+
         if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)
         return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
     else:
@@ -213,20 +234,16 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
     if not silent: print "    Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
     return {'array': current_match.tolist(), 'score': current_score}
 
-
 def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     N_BRUTEFORCE_KABSCH = 3
     silent = True
 
     point_arrays = map(np.array, point_lists)
-    N_points = point_arrays[0].shape[0]
-
-    permutation_list = [ perm for perm in itertools.product(*map(lambda x: range(x),range(N_points,N_points-N_BRUTEFORCE_KABSCH,-1))) if perm[0] != perm[1] and perm[1]!= perm[2] ] # Selecting three points at random amongst N
 
     unique_points = [None, point_arrays[1][0:N_BRUTEFORCE_KABSCH, 0:3] ]
     best_match, best_score = None, None
 
-    for permutation in permutation_list:
+    for permutation in N_amongst_array(point_arrays[0], N_BRUTEFORCE_KABSCH):
         unique_points[0] = map(lambda index: point_arrays[0][index, 0:3], permutation)
         P, Q = unique_points
         U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
@@ -258,7 +275,7 @@ def assert_found_permutation(array1, array2, silent=True, hard_fail=False):
             if distance == min_dist: min_index = j
         perm_list.append((i, min_index))
 
-    offending_indexes = filter(lambda x: len(x[1])>=2, [ (value, list(group)) for value, group in itertools.groupby(perm_list, lambda x:x[1]) ])
+    offending_indexes = filter(lambda x: len(x[1])>=2, [ (value, list(group)) for value, group in groupby(perm_list, lambda x:x[1]) ])
     #ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
 
     # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list

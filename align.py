@@ -7,6 +7,7 @@ from copy import deepcopy
 from scoring import rmsd_array, ad_array, rmsd, ad
 from permutations import N_amongst_array
 import pprint
+import yaml
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -20,7 +21,6 @@ MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNI
 
 ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
-FORCE_KABSCH_IF_POSSIBLE = True
 
 ELEMENT_NUMBERS = {
     "H":1,"HE":2,"LI":3,"BE":4,"B":5,"C":6,"N":7,"O":8,"F":9,"NE":10,"NA":11,"MG":12,
@@ -85,7 +85,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if has_elements:
         method_results['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
-    best_method = "kabsch" if method_results['kabsch']['score'] and (method_results['kabsch']['score'] <= method_results['bruteforce']['score'] or FORCE_KABSCH_IF_POSSIBLE) else "bruteforce"
+    #best_method = "kabsch" if method_results['kabsch']['score'] and (method_results['kabsch']['score'] <= method_results['bruteforce']['score'] or FORCE_KABSCH_IF_POSSIBLE) else "bruteforce"
+    best_method = sorted(method_results.items(), key=lambda x:x[1]['score'] if 'score' in x[1] else 100.)[0][0]
     best_match = method_results[best_method]['array']
     
     if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))

@@ -124,11 +124,12 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
             rotated_point_arrays = [np.dot(centered_arrays[0], r)]
 
             # If the norm of the vector are the same, check that the rotation effectively put p on q
-            if reference_vectors[1].norm() == reference_vectors[0].norm():
-                assert_array_equal(rotated_point_arrays[0][0, 0:3], reference_vectors[1]._ar)
-            # Else do the same operation on the normalized vectors
-            else:
-                assert_array_equal(Vector(rotated_point_arrays[0][0, 0:3]).normalized()._ar, reference_vectors[1].normalized()._ar)
+            if all([ vect.norm() != 0. for vect in reference_vectors]):
+                if reference_vectors[1].norm() == reference_vectors[0].norm():
+                    assert_array_equal(rotated_point_arrays[0][0, 0:3], reference_vectors[1]._ar)
+                # Else do the same operation on the normalized vectors
+                else:
+                    assert_array_equal(Vector(rotated_point_arrays[0][0, 0:3]).normalized()._ar, reference_vectors[1].normalized()._ar)
 
             current_score = distance_array_function(rotated_point_arrays[0], centered_arrays[1], silent=silent)
             if current_score <= best_score: 

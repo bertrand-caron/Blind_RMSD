@@ -13,6 +13,7 @@ import align
 from scoring import rmsd, ad
 from copy import deepcopy
 import shutil
+import numpy
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd if True else ad
@@ -47,11 +48,12 @@ def IDs_for_InChI(inchi):
     print "Getting molIDs for InChI {inchi} at: {url}".format(inchi=inchi, url=url)
     response = urllib2.urlopen(url)
     data = yaml.load(response.read())
-    return map(lambda molecule: molecule['molid'], data['molecules'])
+    molids = map(lambda molecule: molecule['molid'], data['molecules'])
+    print 'Results: {0}'.format(molids)
+    return molids
 
 def download_molecule_files(molecule_name, inchi):
     molids =  IDs_for_InChI(inchi)
-    print molids
     for version, molid  in enumerate(molids):
         try:
             for extension in ['pdb', 'yml']:
@@ -67,13 +69,14 @@ def download_molecule_files(molecule_name, inchi):
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
             raise e
+        return molids
 
 def molecule_test_alignment_generator(test_datum):
     def test(self):
         molecule_name = test_datum['molecule_name']
         expected_rmsd = test_datum['expected_rmsd']
 
-        download_molecule_files(molecule_name, test_datum['InChI'])
+        molids = download_molecule_files(molecule_name, test_datum['InChI'])
         m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
         m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='pdb'))
@@ -112,6 +115,44 @@ def molecule_test_alignment_generator(test_datum):
         self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)
     return test
 
+def get_distance_matrix(test_datum):
+    #return
+    molecule_name = test_datum['molecule_name']
+    expected_rmsd = test_datum['expected_rmsd']
+    molids = download_molecule_files(molecule_name, test_datum['InChI'])
+    mol_number = len(molids)
+    matrix = numpy.zeros((mol_number, mol_number))
+    for version1 in range(1, mol_number):
+        m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version1, extension='pdb'))
+        point_list1 = [ atom.x[:] for atom in m1.atoms]
+        for version2 in range(version1):
+            aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(version1, version2), extension='pdb')
+            if exists(aligned_pdb_file): continue
+
+            m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version2, extension='pdb'))
+            point_list2 = [ atom.x[:] for atom in m2.atoms]
+
+            point_lists = [point_list1, point_list2]
+
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data1 = yaml.load(fh.read())
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='yml')) as fh: data2 = yaml.load(fh.read())
+            flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
+            flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
+            element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
+            element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
+
+            flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
+
+            aligned_point_list1, reference_array = align.pointsOnPoints(deepcopy(point_lists), silent=True, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+            matrix[version1, version2] = scoring_function(aligned_point_list1, point_list2)
+
+            for i, atom in enumerate(m1.atoms):
+                atom.x = aligned_point_list1[i]
+            m1.write(aligned_pdb_file)
+        #break
+    with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log'), 'w') as fh: fh.write(str(matrix))
+    print matrix
+
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):
         if result.failures or result.errors:
@@ -131,5 +172,6 @@ if __name__ == "__main__":
         for test_datum in test_data:
             test = molecule_test_alignment_generator(test_datum)
             setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
+            get_distance_matrix(test_datum)
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

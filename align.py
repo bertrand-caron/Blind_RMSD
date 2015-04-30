@@ -16,7 +16,7 @@ on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-MIN_N_UNIQUE_POINTS = 4
+MIN_N_UNIQUE_POINTS = 3
 MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
@@ -78,8 +78,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     method_results = {}
     # Try the bruteforce method first
     method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
-    method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
-    method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
+    #method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
+    #method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
@@ -96,7 +96,6 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
     assert_found_permutation(corrected_best_match, point_arrays[1], silent=silent)
     
-    print "RMSD: {0}".format(distance_function(corrected_best_match, point_arrays[1] + center_of_geometries[1] ))
     return corrected_best_match.tolist(), point_arrays[1]
 
 ### METHODS ###
@@ -177,7 +176,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         # Order them by number of largest atoms first
         ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0][1].upper() ], reverse=True),
                                      [0,1])
-        pp.pprint(ambiguous_point_groups)
+        #pp.pprint(ambiguous_point_groups)
 
         N_ambiguous_points = sum( map(len, ambiguous_point_groups[0]))
 
@@ -289,7 +288,7 @@ def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_a
 #################
 
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
-    assert np.allclose( array1, array2), message.format(array1, array2)
+    assert np.allclose( array1, array2, atol=1e-5), message.format(array1, array2)
 
 def assert_found_permutation(array1, array2, silent=True, hard_fail=False):
     perm_list = []

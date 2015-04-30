@@ -9,7 +9,7 @@
   id2: 8652
   expected_rmsd: 0.05
 - molecule_name: ethanol
-  InChI: 'InChI=1S/C2H5O/c1-2-3/h2H2,1H3'
+  InChI: 'InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3'
   id1: 22354
   id2: 23009
   expected_rmsd: 0.05

@@ -43,7 +43,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     has_flavours = True if all(flavour_lists) else False
     has_elements = True if all(element_lists) else False
     has_bonds = True if bonds else False
-    bonds = map(np.array, bonds)
+    if has_bonds: bonds = map(np.array, bonds)
 
     # Assert that the fitting make sense
     assert len(point_lists[0]) == len(point_lists[1]), "Error: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists))

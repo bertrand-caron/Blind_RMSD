@@ -23,3 +23,6 @@
   id1: 20682
   id2: 20681
   expected_rmsd: 0.05
+- molecule_name: '1,4-dibromobenzene'
+  InChI: 'InChI=1S/C6H4Br2/c7-5-1-2-6(8)4-3-5/h1-4H'
+  expected_rmsd: 0.05

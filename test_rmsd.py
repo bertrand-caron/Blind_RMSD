@@ -69,7 +69,7 @@ def download_molecule_files(molecule_name, inchi):
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
             raise e
-        return molids
+    return molids
 
 def molecule_test_alignment_generator(test_datum):
     def test(self):
@@ -115,19 +115,21 @@ def molecule_test_alignment_generator(test_datum):
         self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum):
+def get_distance_matrix(test_datum, overwrite_results=True):
     #return
     molecule_name = test_datum['molecule_name']
     expected_rmsd = test_datum['expected_rmsd']
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
     mol_number = len(molids)
     matrix = numpy.zeros((mol_number, mol_number))
+    matrix_log_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log')
+    molids_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='ids')
     for version1 in range(1, mol_number):
         m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version1, extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
         for version2 in range(version1):
             aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(version1, version2), extension='pdb')
-            if exists(aligned_pdb_file): continue
+            if exists(aligned_pdb_file) and not overwrite_results: continue
 
             m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version2, extension='pdb'))
             point_list2 = [ atom.x[:] for atom in m2.atoms]
@@ -150,7 +152,8 @@ def get_distance_matrix(test_datum):
                 atom.x = aligned_point_list1[i]
             m1.write(aligned_pdb_file)
         #break
-    with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log'), 'w') as fh: fh.write(str(matrix))
+    if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix)
+    with open(molids_file, 'w') as fh: fh.write("\n".join([ "{0}: {1}".format(i, molid) for i, molid in enumerate(molids)]))
     print matrix
 
 class Test_RMSD(unittest.TestCase):
@@ -170,8 +173,9 @@ if __name__ == "__main__":
         test_data = yaml.load(fh.read())
         print "Test data is:\n{0}\n".format(yaml.dump(test_data))
         for test_datum in test_data:
-            test = molecule_test_alignment_generator(test_datum)
-            setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
+            if 'id1' in test_datum and 'id2' in test_datum:
+                test = molecule_test_alignment_generator(test_datum)
+                setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
             get_distance_matrix(test_datum)
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

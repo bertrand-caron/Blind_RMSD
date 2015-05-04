@@ -129,6 +129,7 @@ def get_distance_matrix(test_datum, overwrite_results=False):
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
     mol_number = len(molids)
     matrix = numpy.zeros((mol_number, mol_number))
+    matrix[:] = numpy.NAN
     matrix_log_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log')
     molids_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='ids')
     for version1 in range(1, mol_number):
@@ -159,7 +160,7 @@ def get_distance_matrix(test_datum, overwrite_results=False):
                 atom.x = aligned_point_list1[i]
             m1.write(aligned_pdb_file)
         #break
-    if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix)
+    if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
     with open(molids_file, 'w') as fh: fh.write("\n".join([ "{0}: {1}".format(i, molid) for i, molid in enumerate(molids)]))
     print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
     print matrix

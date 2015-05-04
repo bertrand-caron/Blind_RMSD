@@ -62,6 +62,14 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     point_arrays = map(np.array, point_lists)
     center_of_geometries = map(center_of_geometry, point_arrays)
+    if has_elements:
+        element_points = get_element_points(point_lists, element_lists, flavour_lists)
+        grouped_element_points = get_grouped_element_points(flavour_lists, element_points, has_flavours)
+        #mask_array = [[ 0 if flavour1 != flavour2 else 1 for cluster_id1, objects1 in grouped_element_points[1].items() ] for cluster_id0, objects0 in grouped_element_points[0].items() ]
+    else:
+        pass
+    mask_array = np.zeros((point_arrays[0].shape[0], point_arrays[0].shape[0]))
+    print np.array(mask_array)
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
     centered_point_arrays = [point_arrays[0] - center_of_geometries[0], point_arrays[1] - center_of_geometries[1]]
@@ -144,22 +152,33 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
     if not silent: print "    Info: Minimum Score from bruteforce algorithm is: {0}".format(best_score)
     return {'array': best_match.tolist(), 'score': best_score, 'reference_array': centered_arrays[1]}
 
-def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
-    has_flavours = True if flavour_lists else False
+# Returns a list of zipped ([coordinates],element, flavour) values for each list in [0,1]
+def get_element_points(point_lists, element_lists, flavour_lists=None):
     N_points = len(point_lists[0])
-    point_arrays = map(np.array, point_lists)
-    if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
-
-    # Try to find MIN_N_UNIQUE_POINTS unique elements type points
+    has_flavours= bool(flavour_lists)
     if has_flavours:
-        element_points = map(lambda index: zip(point_lists[index], element_lists[index], flavour_lists[index], range(N_points)), [0,1])
+        return map(lambda index: zip(point_lists[index], element_lists[index], flavour_lists[index], range(N_points)), [0,1])
+    else:
+        return map(lambda index: zip(point_lists[index], element_lists[index], range(N_points)), [0,1])
+
+# Returns a dictionary {'#{element_type}#{length_of_eauivalence_group}' -> [#{element_point_1}, .. #{element_point_n}]} for each list in [0,1]
+def get_grouped_element_points(flavour_lists, element_points, has_flavours=False):
+    if has_flavours:
         grouped_flavour_lists = [group_by(flavour_lists[0], on_self), group_by(flavour_lists[1], on_self)]
         grouping_functions = map( lambda index: partial(on_second_element_and_flavour, grouped_flavour_lists[index]) if has_flavours else on_second_element, [0,1])
     else:
-        element_points = map(lambda index: zip(point_lists[index], element_lists[index], range(N_points)), [0,1])
         grouping_functions = [on_second_element, on_second_element]
 
-    grouped_element_points = map( lambda index:group_by(element_points[index], grouping_functions[index]), [0,1])
+    return map( lambda index:group_by(element_points[index], grouping_functions[index]), [0,1])
+
+def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
+    point_arrays = map(np.array, point_lists)
+    has_flavours= bool(flavour_lists)
+    if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
+    
+    element_points = get_element_points(point_lists, element_lists, flavour_lists)
+    grouped_element_points = get_grouped_element_points(flavour_lists, element_points, has_flavours)
+    # Try to find MIN_N_UNIQUE_POINTS unique elements type points
     unique_points = map(lambda grouped_element_point: [group[0] for group in grouped_element_point.values() if len(group) == 1], grouped_element_points)
 
     assert len(unique_points[0]) == len(unique_points[1]), "Error: Non matching number of unique points in {0} and {1}".format(*unique_points)

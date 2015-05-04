@@ -44,7 +44,7 @@ def split_equivalence_group(eq_list):
     return split_eq_list
 
 def IDs_for_InChI(inchi):
-    url = SEARCH_API_URL.format(HOST=HOST, inchi=inchi, API_TOKEN=API_TOKEN)
+    url = SEARCH_API_URL.format(HOST=HOST, inchi=urllib2.quote(inchi), API_TOKEN=API_TOKEN)
     print "Getting molIDs for InChI {inchi} at: {url}".format(inchi=inchi, url=url)
     response = urllib2.urlopen(url)
     data = yaml.load(response.read())

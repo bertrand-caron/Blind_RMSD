@@ -77,15 +77,22 @@ def molecule_test_alignment_generator(test_datum):
         expected_rmsd = test_datum['expected_rmsd']
 
         molids = download_molecule_files(molecule_name, test_datum['InChI'])
-        m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='pdb'))
+        molid_to_index = dict(zip(molids, range(len(molids))))
+        version1, version2 = map(lambda an_id:molid_to_index[test_datum[an_id]], ['id1', 'id2'])
+        file1, file2 = map(lambda version: FILE_TEMPLATE.format(molecule_name=molecule_name, version=version, extension='{extension}'), [version1, version2])
+
+        if len(molids) == 1:
+            print "Error: Can't run as there are only one molecule in the test suite."
+            return
+        m1 = pmx.Model(file1.format(extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
-        m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='pdb'))
+        m2 = pmx.Model(file2.format(extension='pdb'))
         point_list2 = [ atom.x[:] for atom in m2.atoms]
 
         point_lists = [point_list1, point_list2]
 
-        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data1 = yaml.load(fh.read())
-        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='yml')) as fh: data2 = yaml.load(fh.read())
+        with open(file1.format(extension='yml')) as fh: data1 = yaml.load(fh.read())
+        with open(file2.format(extension='yml')) as fh: data2 = yaml.load(fh.read())
         flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
         flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
         element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
@@ -104,18 +111,18 @@ def molecule_test_alignment_generator(test_datum):
         logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
         aligned_point_list1, reference_array = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
-        for i, atom in enumerate(m1.atoms):
-            atom.x = aligned_point_list1[i]
-        m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned", extension='pdb'))
+        #for i, atom in enumerate(m1.atoms):
+        #    atom.x = aligned_point_list1[i]
+        #m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned_on_0", extension='pdb'))
 
         logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, point_list2)))
         logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, reference_array)))
         logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
-        logging.info("To debug these results, run 'pymol testing/{molecule_name}/{molecule_name}*.pdb'".format(molecule_name=molecule_name))
+        logging.info("To debug these results, run 'pymol {0} {1}'".format( *map(lambda file: file.format(extension='pdb'), [FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(version2, version1), extension='{extension}'), file1]) ))
         self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, overwrite_results=True):
+def get_distance_matrix(test_datum, overwrite_results=False):
     #return
     molecule_name = test_datum['molecule_name']
     expected_rmsd = test_datum['expected_rmsd']
@@ -136,8 +143,8 @@ def get_distance_matrix(test_datum, overwrite_results=True):
 
             point_lists = [point_list1, point_list2]
 
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data1 = yaml.load(fh.read())
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=2, extension='yml')) as fh: data2 = yaml.load(fh.read())
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=0, extension='yml')) as fh: data1 = yaml.load(fh.read())
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data2 = yaml.load(fh.read())
             flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
             flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
             element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
@@ -154,6 +161,7 @@ def get_distance_matrix(test_datum, overwrite_results=True):
         #break
     if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix)
     with open(molids_file, 'w') as fh: fh.write("\n".join([ "{0}: {1}".format(i, molid) for i, molid in enumerate(molids)]))
+    print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
     print matrix
 
 class Test_RMSD(unittest.TestCase):

@@ -154,6 +154,16 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
     if not silent: print "    Info: Minimum Score from bruteforce algorithm is: {0}".format(best_score)
     return {'array': best_match.tolist(), 'score': best_score, 'reference_array': centered_arrays[1]}
 
+
+def get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, N_points):
+    chemical_points_lists = map(lambda index:[ChemicalPoint(*zipped_point) for zipped_point in zip(point_lists[index], 
+                                                                                                   range(N_points), 
+                                                                                                   element_lists[index], 
+                                                                                                   flavour_lists[index] if has_flavours else [None] * N_points)
+                                              ], 
+                                ON_BOTH_LISTS)
+    return chemical_points_lists
+
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
     has_flavours= bool(flavour_lists)
@@ -161,12 +171,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
     
     if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
     
-    chemical_points_lists = map(lambda index: [ChemicalPoint(*zipped_point) for zipped_point in zip(point_lists[index], 
-                                                                                              range(N_points), 
-                                                                                              element_lists[index],
-                                                                                              flavour_lists[index] if has_flavours else [None]*N_points)
-                                         ], 
-                          ON_BOTH_LISTS)
+    chemical_points_lists = get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, N_points)
     print chemical_points_lists
     
     grouped_chemical_points_lists = map(lambda chemical_points:group_by(chemical_points, on_canonical_rep), chemical_points_lists)

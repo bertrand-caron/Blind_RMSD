@@ -8,19 +8,18 @@ on_canonical_rep = lambda chemical_point: chemical_point.canonical_rep
 
 class ChemicalPoint:
     
-    def __init__(self, x, index, element=None, flavour=None):
+    def __init__(self, x, index, element=None, flavour=None, grouped_flavours=None):
         self.x = x
         self.index = index
         self.element = element
         self.flavour = flavour
-        self.canonical_rep = str(element) if self.flavour else str(element)
+        self.canonical_rep = element if not grouped_flavours else '{element}{group_length}'.format(element=element, group_length=len(grouped_flavours[flavour]))
     
     def __str__(self):
-        return '{data}'.format(data=dump({'x':self.x,
-                                        'index':self.index,
-                                        'element': self.element,
-                                        'flavour': self.flavour,
-                                        'canonical_rep': self.canonical_rep
-                                        }))
+        return '{{index={index}, element={element}, canonical_rep={canonical_rep}}}'.format(
+                                        **{   'index':self.index,
+                                            'element': self.element,
+                                            'canonical_rep': self.canonical_rep
+                                        })
     def __repr__(self):
         return self.__str__()

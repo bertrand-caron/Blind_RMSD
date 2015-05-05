@@ -26,3 +26,9 @@
 - molecule_name: '1,4-dibromobenzene'
   InChI: 'InChI=1S/C6H4Br2/c7-5-1-2-6(8)4-3-5/h1-4H'
   expected_rmsd: 0.05
+- molecule_name: 'toluene'
+  InChI: 'InChI=1S/C7H8/c1-7-5-3-2-4-6-7/h2-6H,1H3'
+  expected_rmsd: 0.05
+- molecule_name: 'phosphosugar'
+  InChI: 'InChI=1S/C6H8O18S4/c7-6-5(24-28(17,18)19)4(23-27(14,15)16)3(22-26(11,12)13)2(21-6)1-20-25(8,9)10/h2-7H,1H2/t2-,3-,4+,5-,6+/m1/s1'
+  expected_rmsd: 0.05

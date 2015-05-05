@@ -4,7 +4,7 @@ from itertools import product, groupby, permutations
 from functools import partial
 from charnley_rmsd import kabsch
 from copy import deepcopy
-from scoring import rmsd_array, ad_array, rmsd, ad
+from scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop
 from permutations import N_amongst_array
 import pprint
 from ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep
@@ -41,7 +41,6 @@ ELEMENT_NUMBERS = {
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE):
 
     # Initializers
-    distance_function, distance_array_function = rmsd if not use_AD else ad, rmsd_array if not use_AD else ad_array
     has_flavours = True if all(flavour_lists) else False
     has_elements = True if all(element_lists) else False
     has_bonds = True if bonds else False
@@ -64,14 +63,17 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     point_arrays = map(np.array, point_lists)
     center_of_geometries = map(center_of_geometry, point_arrays)
-    #if has_elements:
-    #    element_points = get_element_points(point_lists, element_lists, flavour_lists)
-    #    grouped_element_points = get_grouped_element_points(flavour_lists, element_points, has_flavours)
-        #mask_array = [[ 0 if flavour1 != flavour2 else 1 for cluster_id1, objects1 in grouped_element_points[1].items() ] for cluster_id0, objects0 in grouped_element_points[0].items() ]
+    if has_elements:
+        grouped_flavours_lists = map(lambda index:group_by(flavour_lists[index], lambda x:x ), ON_BOTH_LISTS)
+        print grouped_flavours_lists
+        chemical_points_lists = get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, grouped_flavours_lists)
+        mask_array = [ [ 0 if chemical_point0.canonical_rep == chemical_point1.canonical_rep else 1.0E5 for chemical_point1 in chemical_points_lists[1] ] 
+                        for chemical_point0 in chemical_points_lists[0] ]
+        distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=np.array(mask_array), **kwargs) if not use_AD else ad_array
     #else:
     #    pass
     #mask_array = np.zeros((point_arrays[0].shape[0], point_arrays[0].shape[0]))
-    #print np.array(mask_array)
+    print np.array(mask_array)
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
     centered_point_arrays = [point_arrays[0] - center_of_geometries[0], point_arrays[1] - center_of_geometries[1]]
@@ -155,24 +157,31 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
     return {'array': best_match.tolist(), 'score': best_score, 'reference_array': centered_arrays[1]}
 
 
-def get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, N_points):
-    chemical_points_lists = map(lambda index:[ChemicalPoint(*zipped_point) for zipped_point in zip(point_lists[index], 
-                                                                                                   range(N_points), 
-                                                                                                   element_lists[index], 
-                                                                                                   flavour_lists[index] if has_flavours else [None] * N_points)
-                                              ], 
+def get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, grouped_flavours_lists):
+    N_points = len(point_lists[0])
+    print [ChemicalPoint(*zipped_point, **{'grouped_flavours': grouped_flavours_lists[0]}) for zipped_point in zip(point_lists[0],
+                                                                            range(N_points),
+                                                                            element_lists[0],
+                                                                            flavour_lists[0] if has_flavours else [None] * N_points
+                                                                             )
+                                             ]
+    chemical_points_lists = map(lambda index:[ChemicalPoint(*zipped_point, **{'grouped_flavours': grouped_flavours_lists[index]}) for zipped_point in zip(point_lists[index],
+                                                                                                                                                   range(N_points),
+                                                                                                                                                   element_lists[index],
+                                                                                                                                                   flavour_lists[index] if has_flavours else [None] * N_points
+                                                                                                                                                   )
+                                              ],
                                 ON_BOTH_LISTS)
     return chemical_points_lists
 
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
     has_flavours= bool(flavour_lists)
-    N_points = len(point_lists[0])
     
     if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
     
-    chemical_points_lists = get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, N_points)
-    print chemical_points_lists
+    grouped_flavours_lists = map(lambda index:group_by(flavour_lists[index], lambda x:x ), ON_BOTH_LISTS)
+    chemical_points_lists = get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, grouped_flavours_lists)
     
     grouped_chemical_points_lists = map(lambda chemical_points:group_by(chemical_points, on_canonical_rep), chemical_points_lists)
     # Try to find MIN_N_UNIQUE_POINTS unique elements type points
@@ -190,7 +199,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         ambiguous_point_groups = map(lambda grouped_chemical_points: sorted([group for group in grouped_chemical_points.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len),
                                      grouped_chemical_points_lists )
         # Order them by number of heaviest atoms first
-        ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0].canonical_rep.upper() ], reverse=True),
+        ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0].element.upper() ], reverse=True),
                                      ON_BOTH_LISTS)
         #pp.pprint(ambiguous_point_groups)
 
@@ -236,7 +245,6 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
                     ambiguous_unique_points[0].append(new_point)
 
             if not silent: print '        Info: Attempting a fit between points {0} and {1}'.format(ambiguous_unique_points[0], unique_points_lists[1])
-            print ambiguous_unique_points[0]
             assert( map(on_elements, ambiguous_unique_points[0]) == map(on_elements, unique_points_lists[1])), "Error: Trying to match points whose elements don't match: {0} != {1}".format(map(on_elements, ambiguous_unique_points[0]), map(on_elements, unique_points_lists[1]))
             P, Q = map(on_coords, ambiguous_unique_points[0]), map(on_coords, unique_points_lists[1])
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)

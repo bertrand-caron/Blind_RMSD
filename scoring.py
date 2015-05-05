@@ -2,33 +2,55 @@ from numpy import sqrt, mean, square
 from scipy.spatial.distance import cdist
 import numpy as np
 
-def rmsd(point_list1, point_list2):
+def rmsd(point_list1, point_list2, mask_array=None):
     point_array1 = np.array(point_list1)
     point_array2 = np.array(point_list2)
-    return rmsd_array(point_array1, point_array2)
+    return rmsd_array(point_array1, point_array2, mask_array=mask_array)
 
 def rmsd_array(point_array1, point_array2, mask_array = None, silent=True):
-    if mask_array:
-        assert mask_array.shape == point_array1.shape, 'Error: Shapes of mask arrays do not match'
+    assert point_array1.shape == point_array2.shape, "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
+    distance_matrix = get_distance_matrix(point_array1, point_array2)
+    if mask_array != None:
+        assert mask_array.shape == distance_matrix.shape, 'Error: Shapes of mask arrays do not match: {0} != {1}'.format(mask_array.shape, distance_matrix.shape)
     else:
         mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))
-    assert point_array1.shape == point_array2.shape, "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
-    distance_matrix = get_distance_matrix(point_array1, point_array2) + mask_array
     if not silent: print "    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0])
     
-    # Do you like my lisp skills?
-    # This convoluted one-liner computes the square (R)oot of the (M)ean (S)quared (M)inimum (D)istances
-    # We should call it the RMSMD :).
-    # I think this is my favourite one-liner ever! (Probably because it look me 1 hour to construct and it's still beautiful)
-    rmsd = sqrt( mean( square( np.min( distance_matrix, axis=0 ) ) ) )
+    rmsd = sqrt( mean( square( np.min( distance_matrix + np.transpose(mask_array), axis=0 ) ) ) )
+    
     if not silent: print "    Info: New RMSD: {0}".format(rmsd)
     return rmsd
 
+def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=True):
+    assert point_array1.shape == point_array2.shape, "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
+    distance_matrix = get_distance_matrix(point_array1, point_array2)
+    if mask_array != None:
+        assert mask_array.shape == distance_matrix.shape, 'Error: Shapes of mask arrays do not match: {0} != {1}'.format(mask_array.shape, distance_matrix.shape)
+    else:
+        mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))
+    if not silent: print "    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0])
+    
+    distances = []
+    for point1 in range(mask_array.shape[0]):
+        closest_distance = None
+        for point2 in range(mask_array.shape[0]):
+            current_distance = distance_matrix[point1, point2] + mask_array[point1, point2]
+            if (not closest_distance) or current_distance <= closest_distance:
+                closest_distance = current_distance 
+        distances.append(closest_distance)
+    rmsd = sqrt( mean( square( distances ) ) )
+
+    #assert rmsd == rmsd_array(point_array1, point_array2, mask_array=mask_array, silent=silent), '{0} != {1}'.format(rmsd, rmsd_array(point_array1, point_array2, mask_array=mask_array, silent=silent))
+    
+    if not silent: print "    Info: New RMSD: {0}".format(rmsd)
+    return rmsd
+
+
 # Absolute Deviation
-def ad(point_list1, point_list2):
+def ad(point_list1, point_list2, mask_array=None):
     point_array1 = np.array(point_list1)
     point_array2 = np.array(point_list2)
-    return ad_array(point_array1, point_array2)
+    return ad_array(point_array1, point_array2, mask_array=mask_array)
 
 def ad_array(point_array1, point_array2, mask_array=None, silent=True):
     if mask_array:

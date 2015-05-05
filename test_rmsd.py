@@ -16,7 +16,7 @@ import shutil
 import numpy
 
 numerical_tolerance = 1e-5
-scoring_function = rmsd if True else ad
+scoring_function = rmsd
 
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
@@ -26,7 +26,7 @@ API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
 
 SEARCH_API_URL = '{HOST}/api/current/molecules/search.py?InChI={inchi}&api_token={API_TOKEN}'
 
-DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&dbfile=pdb_fromuser',
+DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&dbfile=pdb_allatom_optimised',
                        'yml': '{HOST}/api/current/molecules/generate_mol_data.py?molid={molid}&api_token={API_TOKEN}',
                      }
 

@@ -7,7 +7,7 @@ from copy import deepcopy
 from scoring import rmsd_array, ad_array, rmsd, ad
 from permutations import N_amongst_array
 import pprint
-import yaml
+from ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -21,6 +21,8 @@ MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNI
 
 ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
+
+ON_BOTH_LISTS = [0,1]
 
 ELEMENT_NUMBERS = {
     "H":1,"HE":2,"LI":3,"BE":4,"B":5,"C":6,"N":7,"O":8,"F":9,"NE":10,"NA":11,"MG":12,
@@ -62,14 +64,14 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     point_arrays = map(np.array, point_lists)
     center_of_geometries = map(center_of_geometry, point_arrays)
-    if has_elements:
-        element_points = get_element_points(point_lists, element_lists, flavour_lists)
-        grouped_element_points = get_grouped_element_points(flavour_lists, element_points, has_flavours)
+    #if has_elements:
+    #    element_points = get_element_points(point_lists, element_lists, flavour_lists)
+    #    grouped_element_points = get_grouped_element_points(flavour_lists, element_points, has_flavours)
         #mask_array = [[ 0 if flavour1 != flavour2 else 1 for cluster_id1, objects1 in grouped_element_points[1].items() ] for cluster_id0, objects0 in grouped_element_points[0].items() ]
-    else:
-        pass
-    mask_array = np.zeros((point_arrays[0].shape[0], point_arrays[0].shape[0]))
-    print np.array(mask_array)
+    #else:
+    #    pass
+    #mask_array = np.zeros((point_arrays[0].shape[0], point_arrays[0].shape[0]))
+    #print np.array(mask_array)
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
     centered_point_arrays = [point_arrays[0] - center_of_geometries[0], point_arrays[1] - center_of_geometries[1]]
@@ -152,61 +154,51 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
     if not silent: print "    Info: Minimum Score from bruteforce algorithm is: {0}".format(best_score)
     return {'array': best_match.tolist(), 'score': best_score, 'reference_array': centered_arrays[1]}
 
-# Returns a list of zipped ([coordinates],element, flavour) values for each list in [0,1]
-def get_element_points(point_lists, element_lists, flavour_lists=None):
-    N_points = len(point_lists[0])
-    has_flavours= bool(flavour_lists)
-    if has_flavours:
-        return map(lambda index: zip(point_lists[index], element_lists[index], flavour_lists[index], range(N_points)), [0,1])
-    else:
-        return map(lambda index: zip(point_lists[index], element_lists[index], range(N_points)), [0,1])
-
-# Returns a dictionary {'#{element_type}#{length_of_eauivalence_group}' -> [#{element_point_1}, .. #{element_point_n}]} for each list in [0,1]
-def get_grouped_element_points(flavour_lists, element_points, has_flavours=False):
-    if has_flavours:
-        grouped_flavour_lists = [group_by(flavour_lists[0], on_self), group_by(flavour_lists[1], on_self)]
-        grouping_functions = map( lambda index: partial(on_second_element_and_flavour, grouped_flavour_lists[index]) if has_flavours else on_second_element, [0,1])
-    else:
-        grouping_functions = [on_second_element, on_second_element]
-
-    return map( lambda index:group_by(element_points[index], grouping_functions[index]), [0,1])
-
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
     has_flavours= bool(flavour_lists)
+    N_points = len(point_lists[0])
+    
     if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
     
-    element_points = get_element_points(point_lists, element_lists, flavour_lists)
-    grouped_element_points = get_grouped_element_points(flavour_lists, element_points, has_flavours)
+    chemical_points_lists = map(lambda index: [ChemicalPoint(*zipped_point) for zipped_point in zip(point_lists[index], 
+                                                                                              range(N_points), 
+                                                                                              element_lists[index],
+                                                                                              flavour_lists[index] if has_flavours else [None]*N_points)
+                                         ], 
+                          ON_BOTH_LISTS)
+    print chemical_points_lists
+    
+    grouped_chemical_points_lists = map(lambda chemical_points:group_by(chemical_points, on_canonical_rep), chemical_points_lists)
     # Try to find MIN_N_UNIQUE_POINTS unique elements type points
-    unique_points = map(lambda grouped_element_point: [group[0] for group in grouped_element_point.values() if len(group) == 1], grouped_element_points)
+    unique_points_lists = map(lambda grouped_chemical_points: [group[0] for group in grouped_chemical_points.values() if len(group) == 1], grouped_chemical_points_lists)
 
-    assert len(unique_points[0]) == len(unique_points[1]), "Error: Non matching number of unique points in {0} and {1}".format(*unique_points)
+    assert len(unique_points_lists[0]) == len(unique_points_lists[1]), "Error: Non matching number of unique points in {0} and {1}".format(*unique_points_lists)
 
-    if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points[0])
+    if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points_lists[0])
 
-    if len(unique_points[0]) < MIN_N_UNIQUE_POINTS:
+    if len(unique_points_lists[0]) < MIN_N_UNIQUE_POINTS:
         if not silent: print "    Warning: Unable to find at least {N} unique point with the elements provided. Trying to disambiguate enough points to make a fit.".format(N=MIN_N_UNIQUE_POINTS)
 
-        missing_points = MIN_N_UNIQUE_POINTS - len(unique_points[0])
+        missing_points = MIN_N_UNIQUE_POINTS - len(unique_points_lists[0])
 
-        ambiguous_point_groups = map(lambda grouped_element_point: sorted([group for group in grouped_element_point.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len),
-                                     grouped_element_points )
-        # Order them by number of largest atoms first
-        ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0][1].upper() ], reverse=True),
-                                     [0,1])
+        ambiguous_point_groups = map(lambda grouped_chemical_points: sorted([group for group in grouped_chemical_points.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len),
+                                     grouped_chemical_points_lists )
+        # Order them by number of heaviest atoms first
+        ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0].canonical_rep.upper() ], reverse=True),
+                                     ON_BOTH_LISTS)
         #pp.pprint(ambiguous_point_groups)
 
         N_ambiguous_points = sum( map(len, ambiguous_point_groups[0]))
 
         if N_ambiguous_points <= missing_points:
-            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=N_ambiguous_points, M=len(unique_points[0]), N=MIN_N_UNIQUE_POINTS)
+            if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=N_ambiguous_points, M=len(unique_points_lists[0]), N=MIN_N_UNIQUE_POINTS)
             return {'array': None, 'score': None, 'reference_array': point_arrays[1]}
 
         if not silent: print "    Info: Found enough point ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points)
 
         permutations_list = []
-        atom_indexes = lambda group: map(on_fourth_element, group)
+        atom_indexes = lambda chemical_points: map(lambda chemical_point: chemical_point.index, chemical_points)
 
         # For each ambiguous group
         ambiguous_points = 0
@@ -228,19 +220,20 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         #print list(complete_permutation_list)
 
         for group, N in zip(ambiguous_point_groups[1], N_list):
-            unique_points[1] += group[0:N]
+            unique_points_lists[1] += group[0:N]
 
         best_match, best_score = None, None
         for group_permutations in complete_permutation_list:
-            ambiguous_unique_points = [deepcopy(unique_points[0])]
+            ambiguous_unique_points = [deepcopy(unique_points_lists[0])]
             for group in group_permutations:
                 for index in group:
-                    new_point = element_points[0][index]
+                    new_point = chemical_points_lists[0][index]
                     ambiguous_unique_points[0].append(new_point)
 
-            if not silent: print '        Info: Attempting a fit between points {0} and {1}'.format(ambiguous_unique_points[0], unique_points[1])
-            assert( map(on_second_element, ambiguous_unique_points[0]) == map(on_second_element, unique_points[1])), "Error: Trying to match points whose elements don't match: {0} != {1}".format(map(on_second_element, ambiguous_unique_points[0]), map(on_second_element, unique_points[1]))
-            P, Q = map(on_first_element, ambiguous_unique_points[0]), map(on_first_element, unique_points[1])
+            if not silent: print '        Info: Attempting a fit between points {0} and {1}'.format(ambiguous_unique_points[0], unique_points_lists[1])
+            print ambiguous_unique_points[0]
+            assert( map(on_elements, ambiguous_unique_points[0]) == map(on_elements, unique_points_lists[1])), "Error: Trying to match points whose elements don't match: {0} != {1}".format(map(on_elements, ambiguous_unique_points[0]), map(on_elements, unique_points_lists[1]))
+            P, Q = map(on_coords, ambiguous_unique_points[0]), map(on_coords, unique_points_lists[1])
             U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
             kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
             current_score = distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
@@ -253,10 +246,10 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)
         return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
     else:
-        assert map(on_second_element, unique_points[0][0:MIN_N_UNIQUE_POINTS]) == map(on_second_element, unique_points[1][0:MIN_N_UNIQUE_POINTS]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_second_element, unique_points[0][0:MIN_N_UNIQUE_POINTS]), map(on_second_element, unique_points[1][0:MIN_N_UNIQUE_POINTS]))
+        assert map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]) == map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]), map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS]))
         
         # Align those MIN_N_UNIQUE_POINTS points using Kabsch algorithm
-        P, Q = map(on_first_element, unique_points[0]), map(on_first_element, unique_points[1])
+        P, Q = map(on_coords, unique_points_lists[0]), map(on_coords, unique_points_lists[1])
         U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
         kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
 

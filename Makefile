@@ -1,4 +1,4 @@
-test: Vector.py charnley_rmsd/kabsch.py pmx
+test: Vector.py charnley_rmsd/kabsch.py pmx testing atb_py
 	make clean
 	python test_rmsd.py
 
@@ -30,3 +30,6 @@ pmx:
 clean:
 	rm -rf testing/*
 .PHONY: clean
+
+atb_py:
+	git clone ssh://git@scmb-gitlab.biosci.uq.edu.au:2023/ATB/atb_py.git && cd atb_py && python setup.py install

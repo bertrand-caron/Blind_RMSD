@@ -135,7 +135,7 @@ def get_distance_matrix(test_datum, silent=True):
     NEXT_TEST = '\n\n'
 
     molecule_name = test_datum['molecule_name']
-    expected_rmsd = test_datum['expected_rmsd']
+    expected_rmsd = DELETION_THRESHOLD
 
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
 

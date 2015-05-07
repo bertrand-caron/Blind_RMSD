@@ -1,3 +1,4 @@
+import argparse
 import unittest
 import sys
 import os
@@ -197,14 +198,24 @@ class Test_RMSD(unittest.TestCase):
         if not a <= b + numerical_tolerance:
             self.fail('%s not less than or equal to %s within %f' % (repr(a), repr(b), numerical_tolerance))
 
+def parse_command_line():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--only', nargs='*', help="Only run test cases matching these molecule names")
+    parser.add_argument('--debug', help="Be overly verbose", action='store_true')
+    args = parser.parse_args()
+    return args
+
 if __name__ == "__main__":
+    args = parse_command_line()
+    print args.only
     with open('test_data.yml') as fh:
         test_data = yaml.load(fh.read())
         print "Test data is:\n{0}\n".format(yaml.dump(test_data))
         for test_datum in test_data:
+            if args.only and test_datum['molecule_name'] not in args.only: continue
             if 'id1' in test_datum and 'id2' in test_datum:
                 test = molecule_test_alignment_generator(test_datum)
                 setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
-            get_distance_matrix(test_datum)
+            get_distance_matrix(test_datum, silent=not args.debug)
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

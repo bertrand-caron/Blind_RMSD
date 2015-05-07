@@ -127,7 +127,7 @@ def molecule_test_alignment_generator(test_datum):
         self.assertLessEqual( best_score, expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, overwrite_results=True):
+def get_distance_matrix(test_datum, silent=True):
     molecule_name = test_datum['molecule_name']
     expected_rmsd = test_datum['expected_rmsd']
 

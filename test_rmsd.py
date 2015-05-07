@@ -59,6 +59,7 @@ def IDs_for_InChI(inchi):
     return molids
 
 def download_molecule_files(molecule_name, inchi):
+    print 'Testing molecule: {0}'.format(molecule_name)
     molids =  IDs_for_InChI(inchi)
     for version, molid  in enumerate(molids):
         try:
@@ -131,11 +132,17 @@ def molecule_test_alignment_generator(test_datum):
 def get_distance_matrix(test_datum, silent=True):
     OVERWRITE_RESULTS = True
     ONLY_DO_ONE_ROW = False
+    NEXT_TEST = '\n\n'
 
     molecule_name = test_datum['molecule_name']
     expected_rmsd = test_datum['expected_rmsd']
 
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
+
+    if len(molids) == 1:
+        print "Found only 1 molid matching this InChI string. Good job !" + NEXT_TEST
+        return
+
     mol_number = len(molids)
     index_to_molid = dict(zip(range(mol_number), molids))
     molid_to_index = dict(zip(molids, range(mol_number)))
@@ -156,8 +163,8 @@ def get_distance_matrix(test_datum, silent=True):
         point_list1 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms1]
         flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in atoms1])
         element_list1 = [ atom['type'] for index, atom in atoms1]
-        pdb_lines1 = reduce(lambda x,y:x+y, [atom['pdb'] for index, atom in atoms1])
-        m1 = pmx.Model(pdblines=pdb_lines1)
+        pdb_lines1 = '\n'.join([atom['pdb'] for index, atom in atoms1])
+        m1 = pmx.Model(pdbline=pdb_lines1)
 
         for version2 in range(version1):
             aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(version1, version2), extension='pdb')
@@ -195,7 +202,7 @@ def get_distance_matrix(test_datum, silent=True):
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=HOST, molid=molid))
     print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, map(lambda molid: molid_to_index[molid], to_delete_molids))
     print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
-    print '\n\n'
+    print NEXT_TEST
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):

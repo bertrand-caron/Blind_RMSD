@@ -24,6 +24,8 @@ DEFAULT_SCORE_TOLERANCE = 0.01
 
 ON_BOTH_LISTS = [0,1]
 
+DISABLE_BRUTEFORCE_METHOD = True
+
 # Align points on points
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE):
 
@@ -73,16 +75,16 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         return (centered_point_arrays[0] + center_of_geometries[1]).tolist()
 
     method_results = {}
-    # Try the bruteforce method first
-    method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
-    #method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
-    #method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
+    if not DISABLE_BRUTEFORCE_METHOD:
+        # Try the bruteforce method first
+        method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
+        method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
+        method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
         method_results['kabsch'] = flavoured_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
-    #best_method = "kabsch" if method_results['kabsch']['score'] and (method_results['kabsch']['score'] <= method_results['bruteforce']['score'] or FORCE_KABSCH_IF_POSSIBLE) else "bruteforce"
     best_method = sorted(method_results.items(), key=lambda x:x[1]['score'] if 'score' in x[1] else 100.)[0][0]
     best_match = method_results[best_method]['array']
     

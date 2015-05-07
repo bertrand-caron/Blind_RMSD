@@ -14,6 +14,7 @@ from scoring import rmsd, ad
 from copy import deepcopy
 import shutil
 import numpy
+numpy.set_printoptions(precision=3, linewidth=300)
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd

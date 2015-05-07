@@ -33,6 +33,9 @@ DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&d
 
 SHOW_GRAPH = False
 
+SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.ids'
+DELETION_THRESHOLD = 1E-1
+
 # Differentiate -1's
 def split_equivalence_group(eq_list):
     accu = 0
@@ -109,29 +112,33 @@ def molecule_test_alignment_generator(test_datum):
         bonds = map(bond_matrix, [data1, data2])
 
         sys.stderr.write("\n")
-        logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
+        #logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1, reference_array = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
+        aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
         #for i, atom in enumerate(m1.atoms):
         #    atom.x = aligned_point_list1[i]
         #m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned_on_0", extension='pdb'))
 
-        logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, point_list2)))
-        logging.info("Score after alignment: {0:.4f}".format(scoring_function(aligned_point_list1, reference_array)))
+        logging.info("Score after alignment: {0:.4f}".format(best_score))
         logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
         logging.info("To debug these results, run 'pymol {0} {1}'".format( *map(lambda file: file.format(extension='pdb'), [FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(version2, version1), extension='{extension}'), file1]) ))
-        self.assertLessEqual( scoring_function(aligned_point_list1, point_list2), expected_rmsd)
+        self.assertLessEqual( best_score, expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, overwrite_results=False):
-    #return
+def get_distance_matrix(test_datum, overwrite_results=True):
     molecule_name = test_datum['molecule_name']
     expected_rmsd = test_datum['expected_rmsd']
+
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
     mol_number = len(molids)
+    index_to_molid = dict(zip(range(mol_number), molids))
+
     matrix = numpy.zeros((mol_number, mol_number))
     matrix[:] = numpy.NAN
     matrix_log_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log')
+
+    to_delete_molids = []
+
     molids_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='ids')
     for version1 in range(1, mol_number):
         m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version1, extension='pdb'))
@@ -154,8 +161,10 @@ def get_distance_matrix(test_datum, overwrite_results=False):
 
             flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
-            aligned_point_list1, reference_array = align.pointsOnPoints(deepcopy(point_lists), silent=True, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
-            matrix[version1, version2] = scoring_function(aligned_point_list1, point_list2)
+            aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=True, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+            matrix[version1, version2] = best_score
+            if best_score <= DELETION_THRESHOLD and index_to_molid[version1] not in to_delete_molids:
+                to_delete_molids.append(index_to_molid[version1])
 
             for i, atom in enumerate(m1.atoms):
                 atom.x = aligned_point_list1[i]
@@ -165,6 +174,15 @@ def get_distance_matrix(test_datum, overwrite_results=False):
     with open(molids_file, 'w') as fh: fh.write("\n".join([ "{0}: {1}".format(i, molid) for i, molid in enumerate(molids)]))
     print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
     print matrix
+
+    # Write the list of molids to delete in a file
+    deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
+    with open(deletion_file, 'w') as fj:
+        for molid in to_delete_molids:
+            fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=HOST, molid=molid))
+    print "Could delete following molids: {0}".format(to_delete_molids)
+    print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
+    print '\n\n'
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):

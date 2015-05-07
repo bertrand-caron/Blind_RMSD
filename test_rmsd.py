@@ -34,7 +34,7 @@ DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&d
 SHOW_GRAPH = False
 
 SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.ids'
-DELETION_THRESHOLD = 1E-1
+DELETION_THRESHOLD = 1E-2
 
 # Differentiate -1's
 def split_equivalence_group(eq_list):

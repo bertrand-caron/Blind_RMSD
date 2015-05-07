@@ -55,12 +55,15 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if has_elements:
         grouped_flavours_lists = map(lambda index:group_by(flavour_lists[index], lambda x:x ), ON_BOTH_LISTS)
         chemical_points_lists = get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, grouped_flavours_lists)
-        mask_array = [ [ 0 if chemical_point0.canonical_rep == chemical_point1.canonical_rep else 1.0E5 for chemical_point1 in chemical_points_lists[1] ] 
-                        for chemical_point0 in chemical_points_lists[0] ]
-        distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=np.array(mask_array), **kwargs) if not use_AD else ad_array
-    #else:
-    #    pass
-    #mask_array = np.zeros((point_arrays[0].shape[0], point_arrays[0].shape[0]))
+        mask_array = np.zeros((len(flavour_lists[0]), len(flavour_lists[0])))
+        dumb_array = np.chararray((len(flavour_lists[0]), len(flavour_lists[0])), itemsize=10)
+        for i, chemical_point0 in enumerate(chemical_points_lists[0]):
+            for j, chemical_point1 in enumerate(chemical_points_lists[1]):
+                mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else 1.0E5
+                dumb_array[i, j] = "{0} {1}".format(chemical_point0.canonical_rep, chemical_point1.canonical_rep)
+        distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array, **kwargs) if not use_AD else ad_array
+        if not silent: print chemical_points_lists
+        if not silent: print dumb_array
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
     centered_point_arrays = [point_arrays[0] - center_of_geometries[0], point_arrays[1] - center_of_geometries[1]]

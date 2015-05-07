@@ -52,7 +52,8 @@ def IDs_for_InChI(inchi):
     print "Getting molIDs for InChI {inchi} at: {url}".format(inchi=inchi, url=url)
     response = urllib2.urlopen(url)
     data = yaml.load(response.read())
-    molids = map(lambda molecule: molecule['molid'], data['molecules'])
+    sorted_molecules = sorted(data['molecules'], key=lambda molecule: (not molecule['has_TI'], molecule['molid']))
+    molids = map(lambda molecule: molecule['molid'], sorted_molecules)
     print 'Results: {0}'.format(molids)
     return molids
 

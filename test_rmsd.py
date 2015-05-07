@@ -90,6 +90,7 @@ def molecule_test_alignment_generator(test_datum):
         if len(molids) == 1:
             print "Error: Can't run as there are only one molecule in the test suite."
             return
+        raise Exception("This is broken")
         m1 = pmx.Model(file1.format(extension='pdb'))
         point_list1 = [ atom.x[:] for atom in m1.atoms]
         m2 = pmx.Model(file2.format(extension='pdb'))
@@ -128,12 +129,16 @@ def molecule_test_alignment_generator(test_datum):
     return test
 
 def get_distance_matrix(test_datum, silent=True):
+    OVERWRITE_RESULTS = True
+    ONLY_DO_ONE_ROW = False
+
     molecule_name = test_datum['molecule_name']
     expected_rmsd = test_datum['expected_rmsd']
 
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
     mol_number = len(molids)
     index_to_molid = dict(zip(range(mol_number), molids))
+    molid_to_index = dict(zip(molids, range(mol_number)))
 
     matrix = numpy.zeros((mol_number, mol_number))
     matrix[:] = numpy.NAN
@@ -141,29 +146,35 @@ def get_distance_matrix(test_datum, silent=True):
 
     to_delete_molids = []
 
+    def nm_to_A(x):
+        return 10*x
+
     molids_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='ids')
     for version1 in range(1, mol_number):
-        m1 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version1, extension='pdb'))
-        point_list1 = [ atom.x[:] for atom in m1.atoms]
+        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version1, extension='yml')) as fh: data1 = yaml.load(fh.read())
+        atoms1 = data1['atoms'].items()
+        point_list1 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms1]
+        flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in atoms1])
+        element_list1 = [ atom['type'] for index, atom in atoms1]
+        pdb_lines1 = reduce(lambda x,y:x+y, [atom['pdb'] for index, atom in atoms1])
+        m1 = pmx.Model(pdblines=pdb_lines1)
+
         for version2 in range(version1):
             aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(version1, version2), extension='pdb')
-            if exists(aligned_pdb_file) and not overwrite_results: continue
+            if exists(aligned_pdb_file) and not OVERWRITE_RESULTS: continue
 
-            m2 = pmx.Model(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version2, extension='pdb'))
-            point_list2 = [ atom.x[:] for atom in m2.atoms]
-
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version2, extension='yml')) as fh: data2 = yaml.load(fh.read())
+            atoms2 = data2['atoms'].items()
+            point_list2 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms2]
             point_lists = [point_list1, point_list2]
 
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=0, extension='yml')) as fh: data1 = yaml.load(fh.read())
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=1, extension='yml')) as fh: data2 = yaml.load(fh.read())
-            flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
-            flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
-            element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
-            element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
+            flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in atoms2])
+            element_list2 = [ atom['type'] for index, atom in atoms2]
 
             flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
-            aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=True, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+            aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+
             matrix[version1, version2] = best_score
             if best_score <= DELETION_THRESHOLD and index_to_molid[version1] not in to_delete_molids:
                 to_delete_molids.append(index_to_molid[version1])
@@ -171,7 +182,7 @@ def get_distance_matrix(test_datum, silent=True):
             for i, atom in enumerate(m1.atoms):
                 atom.x = aligned_point_list1[i]
             m1.write(aligned_pdb_file)
-        #break
+        if ONLY_DO_ONE_ROW: break
     if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
     with open(molids_file, 'w') as fh: fh.write("\n".join([ "{0}: {1}".format(i, molid) for i, molid in enumerate(molids)]))
     print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
@@ -182,7 +193,7 @@ def get_distance_matrix(test_datum, silent=True):
     with open(deletion_file, 'w') as fj:
         for molid in to_delete_molids:
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=HOST, molid=molid))
-    print "Could delete following molids: {0}".format(to_delete_molids)
+    print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, map(lambda molid: molid_to_index[molid], to_delete_molids))
     print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
     print '\n\n'
 

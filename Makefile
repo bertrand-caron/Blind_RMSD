@@ -1,4 +1,5 @@
 test: Vector.py charnley_rmsd/kabsch.py pmx
+	make clean
 	python test_rmsd.py
 
 test-pymol: test
@@ -25,3 +26,7 @@ testing:
 pmx:
 		echo -e "Please install pmx\n\n"
 .PHONY: pmx
+
+clean:
+	rm -rf testing/*
+.PHONY: clean

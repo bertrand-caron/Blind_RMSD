@@ -186,7 +186,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
         N_ambiguous_points = sum( map(len, ambiguous_point_groups[0]))
 
-        if N_ambiguous_points <= missing_points:
+        if N_ambiguous_points < missing_points:
             if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=N_ambiguous_points, M=len(unique_points_lists[0]), N=MIN_N_UNIQUE_POINTS)
             return {'array': None, 'score': None, 'reference_array': point_arrays[1]}
 

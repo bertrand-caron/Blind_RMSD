@@ -15,6 +15,7 @@ from scoring import rmsd, ad
 from copy import deepcopy
 import shutil
 import numpy
+from atb.api import API
 numpy.set_printoptions(precision=3, linewidth=300)
 
 numerical_tolerance = 1e-5
@@ -22,15 +23,8 @@ scoring_function = rmsd
 
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
-HOST = 'http://compbio.biosci.uq.edu.au/atb-new'
-#HOST = 'http://scmb-atbweb.biosci.uq.edu.au/atb'
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-
-SEARCH_API_URL = '{HOST}/api/current/molecules/search.py?InChI={inchi}&api_token={API_TOKEN}'
-
-DOWNLOAD_TEMPLATES = { 'pdb': '{HOST}/download.py?molid={molid}&outputType=top&dbfile=pdb_allatom_optimised',
-                       'yml': '{HOST}/api/current/molecules/generate_mol_data.py?molid={molid}&api_token={API_TOKEN}',
-                     }
+api = API(api_token=API_TOKEN)
 
 SHOW_GRAPH = False
 
@@ -48,35 +42,27 @@ def split_equivalence_group(eq_list):
             accu += 1
     return split_eq_list
 
-def IDs_for_InChI(inchi):
-    url = SEARCH_API_URL.format(HOST=HOST, inchi=urllib2.quote(inchi), API_TOKEN=API_TOKEN)
-    print "Getting molIDs for InChI {inchi} at: {url}".format(inchi=inchi, url=url)
-    response = urllib2.urlopen(url)
-    data = yaml.load(response.read())
-    sorted_molecules = sorted(data['molecules'], key=lambda molecule: (not molecule['has_TI'], molecule['molid']))
-    molids = map(lambda molecule: molecule['molid'], sorted_molecules)
-    print 'Results: {0}'.format(molids)
-    return molids
 
 def download_molecule_files(molecule_name, inchi):
+    def sorted_mols_for_InChI(inchi):
+        matches = api.search(key='InChI', value=inchi)
+        sorted_molecules = sorted(matches, key=lambda m: (not m.has_TI, m.molid))
+        print 'Results: {0}'.format(map(lambda m:m.molid, sorted_molecules))
+        return sorted_molecules
+
     print 'Testing molecule: {0}'.format(molecule_name)
-    molids =  IDs_for_InChI(inchi)
-    for version, molid  in enumerate(molids):
+    molecules =  sorted_mols_for_InChI(inchi)
+    for version, molecule  in enumerate(molecules):
         try:
             for extension in ['pdb', 'yml']:
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
-                if not exists(file_name):
-                    with open(file_name, 'w') as fh:
-                        download_url = DOWNLOAD_TEMPLATES[extension].format(molid=molid, HOST=HOST, API_TOKEN=API_TOKEN)
-                        print "Downloading: {0}".format(download_url)
-                        response = urllib2.urlopen(download_url)
-                        fh.write( response.read() )
+                if not exists(file_name): molecule.download(file_name, format=extension)
         except Exception, e:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
             raise e
-    return molids
+    return map(lambda m: m.molid, molecules)
 
 def molecule_test_alignment_generator(test_datum):
     def test(self):
@@ -199,7 +185,7 @@ def get_distance_matrix(test_datum, silent=True):
     deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
     with open(deletion_file, 'w') as fj:
         for molid in to_delete_molids:
-            fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=HOST, molid=molid))
+            fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
     print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, map(lambda molid: molid_to_index[molid], to_delete_molids))
     print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
     print NEXT_TEST

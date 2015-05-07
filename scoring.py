@@ -5,7 +5,7 @@ import numpy as np
 def rmsd(point_list1, point_list2, mask_array=None):
     point_array1 = np.array(point_list1)
     point_array2 = np.array(point_list2)
-    return rmsd_array(point_array1, point_array2, mask_array=mask_array)
+    return rmsd_array_for_loop(point_array1, point_array2, mask_array=mask_array)
 
 def rmsd_array(point_array1, point_array2, mask_array = None, silent=True):
     assert point_array1.shape == point_array2.shape, "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
@@ -19,6 +19,7 @@ def rmsd_array(point_array1, point_array2, mask_array = None, silent=True):
     rmsd = sqrt( mean( square( np.min( distance_matrix + np.transpose(mask_array), axis=0 ) ) ) )
     
     if not silent: print "    Info: New RMSD: {0}".format(rmsd)
+    raise Exception() # Wrong until proven otherwise
     return rmsd
 
 def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=True):

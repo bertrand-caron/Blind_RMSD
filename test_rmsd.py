@@ -183,10 +183,20 @@ def get_distance_matrix(test_datum, silent=True):
 
     # Write the list of molids to delete in a file
     deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
+    to_delete_indexes = map(lambda molid: molid_to_index[molid], to_delete_molids)
     with open(deletion_file, 'w') as fj:
+        pymol_files = ' '.join(map(lambda index: FILE_TEMPLATE.format(molecule_name=molecule_name, version=index, extension='pdb'), [0] + to_delete_indexes))
+        fj.write('''
+pymol -M {pymol_files}
+echo "Do you want to continue?(yes/no)"
+read continue
+if [ "$continue" != "yes" ]; then
+    exit
+fi
+'''.format(pymol_files=pymol_files))
         for molid in to_delete_molids:
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
-    print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, map(lambda molid: molid_to_index[molid], to_delete_molids))
+    print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, to_delete_indexes)
     print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
     print NEXT_TEST
 

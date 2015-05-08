@@ -166,7 +166,11 @@ def get_distance_matrix(test_datum, silent=True):
 
             flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
-            aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+            try:
+                aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+            except Exception, e:
+                print 'Error: Failed on matching {0} to {1}'.format(version1, version2)
+                raise e
 
             matrix[version1, version2] = best_score
             if best_score <= DELETION_THRESHOLD and index_to_molid[version1] not in to_delete_molids:

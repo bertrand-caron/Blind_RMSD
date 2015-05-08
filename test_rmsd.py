@@ -29,7 +29,7 @@ api = API(api_token=API_TOKEN)
 SHOW_GRAPH = False
 
 SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.ids'
-DELETION_THRESHOLD = 1E-2
+DELETION_THRESHOLD = 5E-2
 
 # Differentiate -1's
 def split_equivalence_group(eq_list):

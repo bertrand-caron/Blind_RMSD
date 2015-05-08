@@ -30,6 +30,7 @@ SHOW_GRAPH = False
 
 SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.ids'
 DELETION_THRESHOLD = 5E-2
+TINY_RMSD_SHOULD_DELETE = 1E-5
 
 # Differentiate -1's
 def split_equivalence_group(eq_list):
@@ -62,7 +63,7 @@ def download_molecule_files(molecule_name, inchi):
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
             raise e
-    return map(lambda m: m.molid, molecules)
+    return molecules
 
 def molecule_test_alignment_generator(test_datum):
     def test(self):
@@ -123,29 +124,26 @@ def get_distance_matrix(test_datum, silent=True):
     molecule_name = test_datum['molecule_name']
     expected_rmsd = DELETION_THRESHOLD
 
-    molids = download_molecule_files(molecule_name, test_datum['InChI'])
+    molecules = download_molecule_files(molecule_name, test_datum['InChI'])
 
-    if len(molids) == 1:
-        print "Found only 1 molid matching this InChI string. Good job !" + NEXT_TEST_STR
+    if len(molecules) == 1:
+        print "Found only 1 molecule matching this InChI string. Good job !" + NEXT_TEST_STR
         return
 
-    mol_number = len(molids)
-    index_to_molid = dict(zip(range(mol_number), molids))
-    molid_to_index = dict(zip(molids, range(mol_number)))
+    mol_number = len(molecules)
 
     matrix = numpy.zeros((mol_number, mol_number))
     matrix[:] = numpy.NAN
     matrix_log_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log')
 
-    to_delete_indexes = []
+    to_delete_molecules, to_delete_NOW_molecules = [], []
     pymol_files = []
 
     def nm_to_A(x):
         return 10*x
 
-    molids_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='ids')
-    for version1 in range(1, mol_number):
-        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version1, extension='yml')) as fh: data1 = yaml.load(fh.read())
+    for i, mol1 in enumerate(molecules):
+        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='yml')) as fh: data1 = yaml.load(fh.read())
         atoms1 = data1['atoms'].items()
         point_list1 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms1]
         flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in atoms1])
@@ -153,11 +151,12 @@ def get_distance_matrix(test_datum, silent=True):
         pdb_lines1 = '\n'.join([atom['pdb'] for index, atom in atoms1])
         m1 = pmx.Model(pdbline=pdb_lines1)
 
-        for version2 in range(version1):
-            aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(version1, version2), extension='pdb')
+        for j, mol2 in enumerate(molecules):
+            if j >= i: continue
+            aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(i, j), extension='pdb')
             if exists(aligned_pdb_file) and not OVERWRITE_RESULTS: continue
 
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=version2, extension='yml')) as fh: data2 = yaml.load(fh.read())
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='yml')) as fh: data2 = yaml.load(fh.read())
             atoms2 = data2['atoms'].items()
             point_list2 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms2]
             point_lists = [point_list1, point_list2]
@@ -170,41 +169,42 @@ def get_distance_matrix(test_datum, silent=True):
             try:
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
             except Exception, e:
-                print 'Error: Failed on matching {0} to {1}'.format(version1, version2)
+                print 'Error: Failed on matching {0} to {1}'.format(i, j)
                 raise e
 
-            matrix[version1, version2] = best_score
+            matrix[i, j] = best_score
             if best_score <= DELETION_THRESHOLD:
-                if not version1 in to_delete_indexes:
-                    to_delete_indexes.append(version1)
-                    pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{version1}_aligned_on_{version2}'.format(version2=version2, version1=version1), extension='pdb'))
-                    pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{version2}'.format(version2=version2), extension='pdb'))
+                if not mol1 in to_delete_molecules:
+                    to_delete_molecules.append(mol1)
+                    if best_score <= TINY_RMSD_SHOULD_DELETE and mol1 not in to_delete_NOW_molecules: to_delete_NOW_molecules.append(mol1)
+                    pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(i, j), extension='pdb'))
+                    pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}'.format(j), extension='pdb'))
 
-            for i, atom in enumerate(m1.atoms):
-                atom.x = aligned_point_list1[i]
+            for index, atom in enumerate(m1.atoms):
+                atom.x = aligned_point_list1[index]
             m1.write(aligned_pdb_file)
         if ONLY_DO_ONE_ROW: break
     if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
-    with open(molids_file, 'w') as fh: fh.write("\n".join([ "{0}: {1}".format(i, molid) for i, molid in enumerate(molids)]))
     print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
     print matrix
 
     # Write the list of molids to delete in a file
     deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
-    to_delete_molids = map(lambda index: index_to_molid[index], to_delete_indexes)
+    to_delete_molids = map(lambda m: m.molid, to_delete_molecules)
     with open(deletion_file, 'w') as fj:
         fj.write('''
-pymol -M {pymol_files}
-echo "Do you want to continue?(yes/no)"
-read continue
-if [ "$continue" != "yes" ]; then
-    exit
-fi
-'''.format(pymol_files=' '.join(pymol_files)))
+        pymol -M {pymol_files}
+        echo "Do you want to continue?(yes/no)"
+        read continue
+        if [ "$continue" != "yes" ]; then
+            exit
+        fi
+        '''.format(pymol_files=' '.join(pymol_files)))
         for molid in to_delete_molids:
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
-    print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, to_delete_indexes)
+    print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
     print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
+    print "Deleting NOW: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
     print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     print args.only
 
     if args.auto:
-        test_molecules = api.duplicated_inchis(offset=30)['molecules']
+        test_molecules = api.duplicated_inchis(offset=50, limit=50)['molecules']
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

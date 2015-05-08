@@ -32,3 +32,9 @@
   InChI: 'InChI=1S/C2H6/c1-2/h1-2H3'
 #- molecule_name: acrolein #There is a bug in one of the acroleines chem equivalency assigment
 #  InChI: 'InChI=1S/C3H4O/c1-2-3-4/h2-3H,1H2'
+- molecule_name: guanidine
+  InChI: 'InChI=1S/CH6N3/c2-1(3)4/h2-4H2'
+- molecule_name: '1-bromopropane'
+  InChI: 'InChI=1S/C3H7Br/c1-2-3-4/h2-3H2,1H3'
+- molecule_name: oxolane
+  InChI: 'InChI=1S/C4H8O/c1-2-4-5-3-1/h1-4H2'

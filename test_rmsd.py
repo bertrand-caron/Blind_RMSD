@@ -118,7 +118,7 @@ def molecule_test_alignment_generator(test_datum):
 def get_distance_matrix(test_datum, silent=True):
     OVERWRITE_RESULTS = True
     ONLY_DO_ONE_ROW = False
-    NEXT_TEST = '\n\n'
+    NEXT_TEST_STR = '\n\n'
 
     molecule_name = test_datum['molecule_name']
     expected_rmsd = DELETION_THRESHOLD
@@ -126,7 +126,7 @@ def get_distance_matrix(test_datum, silent=True):
     molids = download_molecule_files(molecule_name, test_datum['InChI'])
 
     if len(molids) == 1:
-        print "Found only 1 molid matching this InChI string. Good job !" + NEXT_TEST
+        print "Found only 1 molid matching this InChI string. Good job !" + NEXT_TEST_STR
         return
 
     mol_number = len(molids)
@@ -137,7 +137,8 @@ def get_distance_matrix(test_datum, silent=True):
     matrix[:] = numpy.NAN
     matrix_log_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension='log')
 
-    to_delete_molids = []
+    to_delete_indexes = []
+    pymol_files = []
 
     def nm_to_A(x):
         return 10*x
@@ -173,8 +174,11 @@ def get_distance_matrix(test_datum, silent=True):
                 raise e
 
             matrix[version1, version2] = best_score
-            if best_score <= DELETION_THRESHOLD and index_to_molid[version1] not in to_delete_molids:
-                to_delete_molids.append(index_to_molid[version1])
+            if best_score <= DELETION_THRESHOLD:
+                if not version1 in to_delete_indexes:
+                    to_delete_indexes.append(version1)
+                    pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{version1}_aligned_on_{version2}'.format(version2=version2, version1=version1), extension='pdb'))
+                    pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{version2}'.format(version2=version2), extension='pdb'))
 
             for i, atom in enumerate(m1.atoms):
                 atom.x = aligned_point_list1[i]
@@ -187,9 +191,8 @@ def get_distance_matrix(test_datum, silent=True):
 
     # Write the list of molids to delete in a file
     deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
-    to_delete_indexes = map(lambda molid: molid_to_index[molid], to_delete_molids)
+    to_delete_molids = map(lambda index: index_to_molid[index], to_delete_indexes)
     with open(deletion_file, 'w') as fj:
-        pymol_files = ' '.join(map(lambda index: FILE_TEMPLATE.format(molecule_name=molecule_name, version=index, extension='pdb'), [0] + to_delete_indexes))
         fj.write('''
 pymol -M {pymol_files}
 echo "Do you want to continue?(yes/no)"
@@ -197,12 +200,12 @@ read continue
 if [ "$continue" != "yes" ]; then
     exit
 fi
-'''.format(pymol_files=pymol_files))
+'''.format(pymol_files=' '.join(pymol_files)))
         for molid in to_delete_molids:
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
     print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, to_delete_indexes)
     print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
-    print NEXT_TEST
+    print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):
@@ -220,20 +223,31 @@ def parse_command_line():
     parser = argparse.ArgumentParser()
     parser.add_argument('--only', nargs='*', help="Only run test cases matching these molecule names")
     parser.add_argument('--debug', help="Be overly verbose", action='store_true')
+    parser.add_argument('--auto', help="Get the inchis from the API", action='store_true')
     args = parser.parse_args()
     return args
 
 if __name__ == "__main__":
     args = parse_command_line()
     print args.only
-    with open('test_data.yml') as fh:
-        test_data = yaml.load(fh.read())
-        print "Test data is:\n{0}\n".format(yaml.dump(test_data))
-        for test_datum in test_data:
-            if args.only and test_datum['molecule_name'] not in args.only: continue
-            if 'id1' in test_datum and 'id2' in test_datum:
-                test = molecule_test_alignment_generator(test_datum)
-                setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
-            get_distance_matrix(test_datum, silent=not args.debug)
+
+    if args.auto:
+        test_molecules = api.duplicated_inchis(offset=30)['molecules']
+        for i, mol in enumerate(test_molecules):
+            if not mol['molecule_name'] or mol['molecule_name'] == '':
+                mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
+            if ' ' in mol['molecule_name']:
+                mol['molecule_name'] = mol['molecule_name'].replace(' ','_')
+    else:
+        with open('test_data.yml') as fh: test_molecules = yaml.load(fh.read())
+
+    print "Test data is:\n{0}\n".format(yaml.dump(test_molecules))
+    for test_datum in test_molecules:
+        if args.only and test_datum['molecule_name'] not in args.only: continue
+        if 'id1' in test_datum and 'id2' in test_datum:
+            test = molecule_test_alignment_generator(test_datum)
+            setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
+        get_distance_matrix(test_datum, silent=not args.debug)
+
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

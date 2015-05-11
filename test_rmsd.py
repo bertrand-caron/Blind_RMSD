@@ -24,13 +24,13 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN)
+api = API(api_token=API_TOKEN, debug=False)
 
 SHOW_GRAPH = False
 
 SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.ids'
-DELETION_THRESHOLD = 5E-2
-TINY_RMSD_SHOULD_DELETE = 1E-5
+DELETION_THRESHOLD = 2E-1
+TINY_RMSD_SHOULD_DELETE = 2E-1
 
 # Differentiate -1's
 def split_equivalence_group(eq_list):
@@ -48,7 +48,7 @@ def download_molecule_files(molecule_name, inchi):
     def sorted_mols_for_InChI(inchi):
         matches = api.search(key='InChI', value=inchi)
         sorted_molecules = sorted(matches, key=lambda m: (not m.has_TI, m.molid))
-        print 'Results: {0}'.format(map(lambda m:m.molid, sorted_molecules))
+        print 'Results: {0} (Inchi was: "{1}")'.format(map(lambda m:m.molid, sorted_molecules), inchi)
         return sorted_molecules
 
     print 'Testing molecule: {0}'.format(molecule_name)
@@ -169,8 +169,9 @@ def get_distance_matrix(test_datum, silent=True):
             try:
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
             except Exception, e:
-                print 'Error: Failed on matching {0} to {1}'.format(i, j)
-                raise e
+                print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
+                #raise e
+                continue
 
             matrix[i, j] = best_score
             if best_score <= DELETION_THRESHOLD:
@@ -202,9 +203,9 @@ def get_distance_matrix(test_datum, silent=True):
         '''.format(pymol_files=' '.join(pymol_files)))
         for molid in to_delete_molids:
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
-    print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
-    print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
-    print "Deleting NOW: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
+    #print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
+    #print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
+    print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
     print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):
@@ -232,12 +233,14 @@ if __name__ == "__main__":
     print args.only
 
     if args.auto:
-        test_molecules = api.duplicated_inchis(offset=50, limit=50)['molecules']
+        test_molecules = api.duplicated_inchis(offset=0, limit=3000)['molecules']
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
             if ' ' in mol['molecule_name']:
                 mol['molecule_name'] = mol['molecule_name'].replace(' ','_')
+            if '/' in mol['molecule_name']:
+                mol['molecule_name'] = mol['molecule_name'].replace('/','_')
     else:
         with open('test_data.yml') as fh: test_molecules = yaml.load(fh.read())
 

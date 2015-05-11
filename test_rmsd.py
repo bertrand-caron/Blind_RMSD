@@ -166,6 +166,10 @@ def get_distance_matrix(test_datum, silent=True, debug=False):
 
             flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
+            # This will throw errors outside of the try block in debug mode
+            if debug:
+                aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+
             try:
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
             except Exception, e:

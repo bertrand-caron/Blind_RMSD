@@ -16,7 +16,7 @@ on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-MIN_N_UNIQUE_POINTS = 3
+MIN_N_UNIQUE_POINTS = 4
 MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False

@@ -17,7 +17,7 @@ on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(
 
 # Kabsch Algorithm options
 MIN_N_UNIQUE_POINTS = 4
-MAX_N_COMPLEXITY = 6 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
+MAX_N_COMPLEXITY = 10 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
@@ -190,10 +190,10 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
 
         ambiguous_point_groups = map(lambda grouped_chemical_points: sorted([group for group in grouped_chemical_points.values() if 1 < len(group) <= MAX_N_COMPLEXITY ], key=len),
                                      grouped_chemical_points_lists )
+
         # Order them by number of heaviest atoms first
         ambiguous_point_groups = map(lambda index: sorted(ambiguous_point_groups[index], key=lambda x: ELEMENT_NUMBERS[ x[0].element.upper() ], reverse=True),
                                      ON_BOTH_LISTS)
-        #pp.pprint(ambiguous_point_groups)
 
         N_ambiguous_points = sum( map(len, ambiguous_point_groups[0]))
 

@@ -174,6 +174,9 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
     grouped_chemical_points_lists = map(lambda chemical_points:group_by(chemical_points, on_canonical_rep), chemical_points_lists)
     # Try to find MIN_N_UNIQUE_POINTS unique elements type points
     unique_points_lists = map(lambda grouped_chemical_points: [group[0] for group in grouped_chemical_points.values() if len(group) == 1], grouped_chemical_points_lists)
+    # Order them by decreasing element type
+    unique_points_lists = map(lambda index: sorted(unique_points_lists[index], key=lambda x: ELEMENT_NUMBERS[ x.element.upper() ], reverse=True),
+                                     ON_BOTH_LISTS)
 
     assert len(unique_points_lists[0]) == len(unique_points_lists[1]), "Error: Non matching number of unique points in {0} and {1}".format(*unique_points_lists)
 

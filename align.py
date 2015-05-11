@@ -71,6 +71,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
     [ assert_array_equal( center_of_geometry(a), np.array([0,0,0])) for a in centered_point_arrays ]
 
+    # Break now if the molecule has less than 3 atoms
+    if len(point_lists[0]) < 3 :
+        return centered_point_arrays[0], 0.0
+
     # Break now if there are no rotational component
     if distance_function(*centered_point_arrays) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."

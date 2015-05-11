@@ -116,7 +116,7 @@ def molecule_test_alignment_generator(test_datum):
         self.assertLessEqual( best_score, expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, silent=True):
+def get_distance_matrix(test_datum, silent=True, debug=False):
     OVERWRITE_RESULTS = True
     ONLY_DO_ONE_ROW = False
     NEXT_TEST_STR = '\n\n'
@@ -205,7 +205,7 @@ def get_distance_matrix(test_datum, silent=True):
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
     #print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
     #print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
-    print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
+    if not debug: print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
     print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):
@@ -250,7 +250,7 @@ if __name__ == "__main__":
         if 'id1' in test_datum and 'id2' in test_datum:
             test = molecule_test_alignment_generator(test_datum)
             setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
-        get_distance_matrix(test_datum, silent=not args.debug)
+        get_distance_matrix(test_datum, silent=not args.debug, debug=args.debug)
 
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

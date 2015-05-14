@@ -32,6 +32,9 @@ SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.
 DELETION_THRESHOLD = 2E-1
 TINY_RMSD_SHOULD_DELETE = 2E-1
 
+ERROR_LOG_FILE = 'log.err'
+ERROR_LOG = open(ERROR_LOG_FILE, 'w')
+
 # Differentiate -1's
 def split_equivalence_group(eq_list):
     accu = 0
@@ -174,7 +177,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False):
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
             except Exception, e:
                 print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
-                #raise e
+                ERROR_LOG.write('ERROR: molids={molids}, msg="{msg}"\n'.format(msg=e, molids=[mol1.molid, mol2.molid]))
                 continue
 
             matrix[i, j] = best_score
@@ -237,7 +240,7 @@ if __name__ == "__main__":
     print args.only
 
     if args.auto:
-        test_molecules = api.duplicated_inchis(offset=0, limit=3000)['molecules']
+        test_molecules = api.duplicated_inchis(offset=0, limit=3000, min_n_atoms=0)['molecules']
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

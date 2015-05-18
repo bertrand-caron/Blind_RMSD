@@ -61,7 +61,8 @@ def download_molecule_files(molecule_name, inchi):
             for extension in ['pdb', 'yml']:
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
-                if not exists(file_name): molecule.download(file_name, format=extension)
+                # This was a disaster waiting to happen, don't assume that the mapping molid -> temporary index is permanent (which is it not, since we are deleting molecules !)
+                if not exists(file_name) and True: molecule.download(file_name, format=extension)
         except Exception, e:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)

@@ -32,6 +32,8 @@ SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.
 DELETION_THRESHOLD = 2E-1
 TINY_RMSD_SHOULD_DELETE = 2E-1
 
+TEST_DATA_FILE = 'test_data_2.yml'
+
 ERROR_LOG_FILE = 'log.err'
 ERROR_LOG = open(ERROR_LOG_FILE, 'w')
 
@@ -62,7 +64,7 @@ def download_molecule_files(molecule_name, inchi):
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
                 # This was a disaster waiting to happen, don't assume that the mapping molid -> temporary index is permanent (which is it not, since we are deleting molecules !)
-                if not exists(file_name) and True: molecule.download(file_name, format=extension)
+                if not exists(file_name) or True: molecule.download(file_name, format=extension)
         except Exception, e:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
@@ -250,7 +252,7 @@ if __name__ == "__main__":
             if '/' in mol['molecule_name']:
                 mol['molecule_name'] = mol['molecule_name'].replace('/','_')
     else:
-        with open('test_data.yml') as fh: test_molecules = yaml.load(fh.read())
+        with open(TEST_DATA_FILE) as fh: test_molecules = yaml.load(fh.read())
 
     print "Test data is:\n{0}\n".format(yaml.dump(test_molecules))
     for test_datum in test_molecules:

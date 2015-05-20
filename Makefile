@@ -32,4 +32,4 @@ clean:
 .PHONY: clean
 
 ../atb_py:
-	cd .. && git clone ssh://git@scmb-gitlab.biosci.uq.edu.au:2023/ATB/atb_py.git && cd atb_py && python setup.py install
+	cd .. && git clone ssh://git@scmb-gitlab.biosci.uq.edu.au:2023/ATB/atb_py.git && cd atb_py && python setup.py install --user

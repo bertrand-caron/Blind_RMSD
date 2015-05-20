@@ -16,7 +16,7 @@ on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
 on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-MIN_N_UNIQUE_POINTS = 4
+DEFAULT_MIN_N_UNIQUE_POINTS = 4
 MAX_N_COMPLEXITY = 10 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
 ALLOW_SHORTCUTS = False
@@ -30,8 +30,11 @@ DISABLE_BRUTEFORCE_METHOD = True
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE):
 
     # Initializers
-    has_flavours = True if all(flavour_lists) else False
-    has_elements = True if all(element_lists) else False
+    has_elements = True if element_lists and all(element_lists) else False
+    has_flavours = True if flavour_lists and all(flavour_lists) else False
+    if not has_flavours:
+        flavour_lists = map(lambda a_list: range(len(a_list)), element_lists)
+        has_flavours = True
     has_bonds = True if bonds else False
     if has_bonds: bonds = map(np.array, bonds)
 
@@ -61,9 +64,9 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
             for j, chemical_point1 in enumerate(chemical_points_lists[1]):
                 mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else 1.0E5
                 dumb_array[i, j] = "{0} {1}".format(chemical_point0.canonical_rep, chemical_point1.canonical_rep)
-        distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array, **kwargs) if not use_AD else ad_array
         if not silent: print chemical_points_lists
         if not silent: print dumb_array
+    distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array if mask_array is not None else None, **kwargs) if not use_AD else ad_array
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
     centered_point_arrays = [point_arrays[0] - center_of_geometries[0], point_arrays[1] - center_of_geometries[1]]
@@ -166,6 +169,7 @@ def get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_fla
 def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
     has_flavours= bool(flavour_lists)
+    MIN_N_UNIQUE_POINTS = DEFAULT_MIN_N_UNIQUE_POINTS if len(point_lists[0]) >= DEFAULT_MIN_N_UNIQUE_POINTS else 3
     
     if not silent: print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
     

@@ -27,7 +27,7 @@ ON_BOTH_LISTS = [0,1]
 DISABLE_BRUTEFORCE_METHOD = True
 
 # Align points on points
-def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE):
+def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False):
 
     # Initializers
     has_elements = True if element_lists and all(element_lists) else False
@@ -97,7 +97,9 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     best_method = sorted(method_results.items(), key=lambda x:x[1]['score'] if 'score' in x[1] else 100.)[0][0]
     best_match = method_results[best_method]['array']
-    if best_match == None: raise Exception("Best match is None. Something went wrong.")
+    if best_match == None:
+        if not soft_fail: raise Exception("Best match is None. Something went wrong.")
+        else: return None, float('inf')
     
     if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)

@@ -76,13 +76,13 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[0]) < 3 :
-        return centered_point_arrays[0], 0.0
+        return (centered_point_arrays[0]).tolist(), 0.0
 
     # Break now if there are no rotational component
     if distance_function(*centered_point_arrays) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         assert_found_permutation(*centered_point_arrays, silent=silent)
-        return (centered_point_arrays[0] + center_of_geometries[1]).tolist()
+        return (centered_point_arrays[0] + center_of_geometries[1]).tolist(), distance_function(*centered_point_arrays)
 
     method_results = {}
     if not DISABLE_BRUTEFORCE_METHOD:

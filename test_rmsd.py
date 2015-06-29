@@ -24,7 +24,7 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN, debug=False)
+api = API(api_token=API_TOKEN, debug=False, host='http://compbio.biosci.uq.edu.au/atb')
 
 SHOW_GRAPH = False
 
@@ -32,7 +32,7 @@ SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.
 DELETION_THRESHOLD = 2E-1
 TINY_RMSD_SHOULD_DELETE = 2E-1
 
-TEST_DATA_FILE = 'test_data_2.yml'
+TEST_DATA_FILE = 'test_data.yml'
 
 ERROR_LOG_FILE = 'log.err'
 ERROR_LOG = open(ERROR_LOG_FILE, 'w')
@@ -122,7 +122,7 @@ def molecule_test_alignment_generator(test_datum):
         self.assertLessEqual( best_score, expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, silent=True, debug=False):
+def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, max_matrix_size=None):
     OVERWRITE_RESULTS = True
     ONLY_DO_ONE_ROW = False
     NEXT_TEST_STR = '\n\n'
@@ -135,6 +135,9 @@ def get_distance_matrix(test_datum, silent=True, debug=False):
     if len(molecules) == 1:
         print "Found only 1 molecule matching this InChI string. Good job !" + NEXT_TEST_STR
         return
+
+    if max_matrix_size:
+        molecules = molecules[0:min(max_matrix_size, len(molecules))]
 
     mol_number = len(molecules)
 
@@ -180,7 +183,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False):
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
             except Exception, e:
                 print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
-                ERROR_LOG.write('ERROR: molids={molids}, msg="{msg}"\n'.format(msg=e, molids=[mol1.molid, mol2.molid]))
+                ERROR_LOG.write('ERROR: InChI={inchi}, molids={molids}, msg="{msg}"\n'.format(inchi=mol1.inchi, msg=e, molids=[mol1.molid, mol2.molid]))
                 continue
 
             matrix[i, j] = best_score
@@ -215,7 +218,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False):
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
     #print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
     #print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
-    if not debug: print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
+    if not (no_delete or debug): print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
     print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):
@@ -235,15 +238,16 @@ def parse_command_line():
     parser.add_argument('--only', nargs='*', help="Only run test cases matching these molecule names")
     parser.add_argument('--debug', help="Be overly verbose", action='store_true')
     parser.add_argument('--auto', help="Get the inchis from the API", action='store_true')
+    parser.add_argument('--nodelete', help="Do not delete molecules", action='store_true')
+    parser.add_argument('--max-matrix-size', help="Maximum size of the distance matrix.", dest='max_matrix_size', default=None, type=int)
     args = parser.parse_args()
     return args
 
 if __name__ == "__main__":
     args = parse_command_line()
-    print args.only
 
     if args.auto:
-        test_molecules = api.duplicated_inchis(offset=0, limit=3000, min_n_atoms=0)['molecules']
+        test_molecules = api.duplicated_inchis(offset=0, limit=5000, min_n_atoms=0)['molecules']
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
@@ -260,7 +264,7 @@ if __name__ == "__main__":
         if 'id1' in test_datum and 'id2' in test_datum:
             test = molecule_test_alignment_generator(test_datum)
             setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
-        get_distance_matrix(test_datum, silent=not args.debug, debug=args.debug)
+        get_distance_matrix(test_datum, silent=not args.debug, debug=args.debug, no_delete=args.nodelete, max_matrix_size=args.max_matrix_size)
 
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

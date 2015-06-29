@@ -151,12 +151,24 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     def nm_to_A(x):
         return 10*x
 
+    def first_order_neighbour_elements(data):
+        return [ reduce(lambda x,y:x+y, sorted(map(lambda con: data['atoms'][con]['type'], conn_list)), '') for conn_list in [ atom['conn'] for index, atom in data['atoms'].items() ] ]
+
+    def equivalence_list(data):
+        return split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data['atoms'].items() ])
+
+    def flavour_list(data):
+        return equivalence_list(data)
+
+    def element_list(data):
+        return [ atom['type'] for index, atom in data['atoms'].items() ]
+
     for i, mol1 in enumerate(molecules):
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='yml')) as fh: data1 = yaml.load(fh.read())
         atoms1 = data1['atoms'].items()
         point_list1 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms1]
-        flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in atoms1])
-        element_list1 = [ atom['type'] for index, atom in atoms1]
+        flavour_list1 = flavour_list(data1)
+        element_list1 = element_list(data1)
         pdb_lines1 = '\n'.join([atom['pdb'] for index, atom in atoms1])
         m1 = pmx.Model(pdbline=pdb_lines1)
 
@@ -170,15 +182,14 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             point_list2 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms2]
             point_lists = [point_list1, point_list2]
 
-            flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in atoms2])
-            element_list2 = [ atom['type'] for index, atom in atoms2]
+            flavour_list2 = flavour_list(data2)
+            element_list2 = element_list(data2)
 
             flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
             # This will throw errors outside of the try block in debug mode
             if debug:
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
-
             try:
                 aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
             except Exception, e:

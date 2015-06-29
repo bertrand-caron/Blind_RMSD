@@ -1,10 +1,11 @@
 import numpy as np
+np.set_printoptions(precision=1, linewidth=300)
 from Vector import Vector, rotmat, m2rotaxis
 from itertools import product, groupby, permutations
 from functools import partial
 from charnley_rmsd import kabsch
 from copy import deepcopy
-from scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop
+from scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_distance_matrix
 from permutations import N_amongst_array
 import pprint
 from ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
@@ -25,6 +26,8 @@ DEFAULT_SCORE_TOLERANCE = 0.01
 ON_BOTH_LISTS = [0,1]
 
 DISABLE_BRUTEFORCE_METHOD = True
+
+BYPASS_SILENT = True
 
 # Align points on points
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False):
@@ -62,7 +65,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         dumb_array = np.chararray((len(flavour_lists[0]), len(flavour_lists[0])), itemsize=10)
         for i, chemical_point0 in enumerate(chemical_points_lists[0]):
             for j, chemical_point1 in enumerate(chemical_points_lists[1]):
-                mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else 1.0E5
+                mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else float('inf')
                 dumb_array[i, j] = "{0} {1}".format(chemical_point0.canonical_rep, chemical_point1.canonical_rep)
         if not silent: print chemical_points_lists
         if not silent: print dumb_array
@@ -106,7 +109,42 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     
     corrected_best_match = best_match - center_of_geometry(best_match) + center_of_geometries[1]
     assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
-    assert_found_permutation(corrected_best_match, point_arrays[1], silent=silent)
+
+    def assert_found_permutation_array(array1, array2, mask_array=None, silent=True, hard_fail=False):
+        perm_list = []
+        masked_rmsd_array = get_distance_matrix(array1, array2) + mask_array
+        print masked_rmsd_array
+        dim = masked_rmsd_array.shape
+        assert dim[0] == dim[1]
+        for i in range(dim[0]):
+            min_dist, min_index = None, None
+            for j in range(dim[0]):
+                distance = masked_rmsd_array[i,j]
+                min_dist = min(min_dist, distance) if min_dist else distance
+                if distance == min_dist: min_index = j
+            perm_list.append((i, min_index))
+
+        offending_indexes = [ (value, map(lambda x: x[0], group)) for value, group in group_by(perm_list, lambda x:x[1]).items() if len(group) >= 2]
+        misdefined_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
+
+        print zip(misdefined_indexes, map(lambda x: (element_lists[1][x], flavour_lists[1][x]), misdefined_indexes))
+
+        # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
+        if hard_fail:
+            assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0]))
+            if not silent:
+                print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+        else:
+            if not sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]):
+                if not silent or BYPASS_SILENT:
+                    print "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0]))
+                    print "Error: Troublesome indexes are {0}".format(misdefined_indexes)
+            else:
+                if not silent or BYPASS_SILENT:
+                    print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+
+
+    assert_found_permutation_array(corrected_best_match, point_arrays[1], mask_array=mask_array if mask_array is not None else None, silent=silent)
     
     return corrected_best_match.tolist(), method_results[best_method]['score']
 
@@ -312,29 +350,6 @@ def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_a
 
 def assert_array_equal(array1, array2, message="{0} and {1} are different"):
     assert np.allclose( array1, array2, atol=1e-5), message.format(array1, array2)
-
-def assert_found_permutation(array1, array2, silent=True, hard_fail=False):
-    perm_list = []
-    for i, point1_array in enumerate(array1[:,0:3]):
-        min_dist, min_index = None, None
-        for j, point2_array in enumerate(array2[:,0:3]):
-            distance = np.linalg.norm(point1_array-point2_array)
-            min_dist = min(min_dist, distance) if min_dist else distance
-            if distance == min_dist: min_index = j
-        perm_list.append((i, min_index))
-
-    offending_indexes = filter(lambda x: len(x[1])>=2, [ (value, list(group)) for value, group in groupby(perm_list, lambda x:x[1]) ])
-    #ambiguous_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
-
-    # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
-    if hard_fail: 
-        assert sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]), "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
-        if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
-    else:
-        if not sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]): 
-            if not silent: print "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), zip(*perm_list)[0])
-        else:
-            if not silent: print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
 
 def rotation_matrix_kabsch_on_points(points1, points2):
     # Align those points using Kabsch algorithm

@@ -1,6 +1,6 @@
 test: Vector.py charnley_rmsd/kabsch.py pmx testing ../atb_py
 	make clean
-	python test_rmsd.py --auto
+	python test_rmsd.py --auto | tee log.out
 
 test-pymol: test
 	pymol -M testing/ethanol/*.pdb

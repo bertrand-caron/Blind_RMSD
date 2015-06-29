@@ -17,6 +17,7 @@ import shutil
 import numpy
 from atb.api import API
 numpy.set_printoptions(precision=3, linewidth=300)
+from align import group_by
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd
@@ -158,7 +159,9 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
         return split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data['atoms'].items() ])
 
     def flavour_list(data):
-        return equivalence_list(data)
+        eq_list = equivalence_list(data)
+        grouped_eq_list = group_by(equivalence_list(data), lambda x:x)
+        return [ len(grouped_eq_list[eq]) for eq in eq_list]
 
     def element_list(data):
         return [ atom['type'] for index, atom in data['atoms'].items() ]

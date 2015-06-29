@@ -13,7 +13,7 @@ class ChemicalPoint:
         self.index = index
         self.element = element
         self.flavour = flavour
-        self.canonical_rep = element if not grouped_flavours else '{element}{group_length}'.format(element=element, group_length=len(grouped_flavours[flavour]))
+        self.canonical_rep = element if not grouped_flavours else '{element}{flavour}'.format(element=element, flavour=flavour)
     
     def __str__(self):
         return '{{index={index}, element={element}, canonical_rep={canonical_rep}, x={x}}}'.format(

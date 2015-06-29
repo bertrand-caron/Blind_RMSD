@@ -1,6 +1,7 @@
 from numpy import sqrt, mean, square
 from scipy.spatial.distance import cdist
 import numpy as np
+np.set_printoptions(precision=1, linewidth=300)
 
 def rmsd(point_list1, point_list2, mask_array=None):
     point_array1 = np.array(point_list1)

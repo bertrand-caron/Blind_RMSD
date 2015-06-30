@@ -46,8 +46,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if has_flavours:
         assert len(flavour_lists[0]) == len(flavour_lists[1]), "Error: Size of flavour lists doesn't match: {0} and {1}".format(*map(len, flavour_lists))
         assert len(flavour_lists[0]) == len(point_lists[1]), "Error: Size of flavour lists doesn't match size of point lists: {0} and {1}".format(*map(len, [flavour_lists[0], point_lists[1]]))
-        get_sorted_eqgroup_lengths = lambda flavour_list: sorted(map(len, group_by(flavour_list, on_self).values()))
-        assert get_sorted_eqgroup_lengths(flavour_lists[0]) == get_sorted_eqgroup_lengths(flavour_lists[1]), "Error: There is not a one to one mapping between the lengths of the flavour sets: {0} and {1}".format(*map(get_sorted_eqgroup_lengths, flavour_lists))
+        assert sorted(flavour_lists[0]) == sorted(flavour_lists[1]), "Error: There is not a one to one mapping between the sorted elements of the flavour sets: {0} and {1}".format(*map(sorted, flavour_lists))
     if has_elements:
         assert len(element_lists[0]) == len(element_lists[1]), "Error: Size of element lists doesn't match: {0} and {1}".format(*map(len, element_lists))
         assert len(element_lists[0]) == len(point_lists[1]), "Error: Size of element lists doesn't match size of point lists: {0} and {1}".format(*map(len, [element_lists[0], point_lists[1]]))
@@ -222,7 +221,34 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
     unique_points_lists = map(lambda index: sorted(unique_points_lists[index], key=lambda x: ELEMENT_NUMBERS[ x.element.upper() ], reverse=True),
                                      ON_BOTH_LISTS)
 
-    assert len(unique_points_lists[0]) == len(unique_points_lists[1]), "Error: Non matching number of unique points in {0} and {1}".format(*unique_points_lists)
+    if not len(unique_points_lists[0]) == len(unique_points_lists[1]):
+        import yaml
+        canonical_reps = [map(on_canonical_rep, unique_points_list) for unique_points_list in unique_points_lists]
+        total_canonical_reps = set(canonical_reps[0] + canonical_reps[1])
+        raise Exception( '''
+Error: Non matching number of unique points in
+{0}
+(len={1})
+
+and
+
+{2}
+(len={3})
+
+Non-matching unique points are:
+{4}
+
+and
+
+{5}
+'''.format(
+        yaml.dump(sorted(unique_points_lists[0], key=lambda x: x.canonical_rep)),
+        len(unique_points_lists[0]),
+        yaml.dump(sorted(unique_points_lists[1], key=lambda x: x.canonical_rep)),
+        len(unique_points_lists[1]),
+        '\n'.join([ str(chem_point) for chem_point in unique_points_lists[0] if on_canonical_rep(chem_point) not in canonical_reps[1] ]),
+        '\n'.join([ str(chem_point) for chem_point in unique_points_lists[1] if on_canonical_rep(chem_point) not in canonical_reps[0] ]),
+    ))
 
     if not silent: print "    Info: Unique groups found based on element types: {0}".format(unique_points_lists[0])
 

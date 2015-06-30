@@ -176,6 +176,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
                 continue
 
             matrix[i, j] = best_score
+            print best_score
             if best_score <= DELETION_THRESHOLD:
                 if not mol1 in to_delete_molecules:
                     to_delete_molecules.append(mol1)

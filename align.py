@@ -27,7 +27,7 @@ ON_BOTH_LISTS = [0,1]
 
 DISABLE_BRUTEFORCE_METHOD = True
 
-BYPASS_SILENT = True
+BYPASS_SILENT = False
 
 # Align points on points
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, bonds=None, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False):
@@ -113,7 +113,6 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     def assert_found_permutation_array(array1, array2, mask_array=None, silent=True, hard_fail=False):
         perm_list = []
         masked_rmsd_array = get_distance_matrix(array1, array2) + mask_array
-        print masked_rmsd_array
         dim = masked_rmsd_array.shape
         assert dim[0] == dim[1]
         for i in range(dim[0]):
@@ -127,7 +126,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         offending_indexes = [ (value, map(lambda x: x[0], group)) for value, group in group_by(perm_list, lambda x:x[1]).items() if len(group) >= 2]
         misdefined_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
 
-        print zip(misdefined_indexes, map(lambda x: (element_lists[1][x], flavour_lists[1][x]), misdefined_indexes))
+        if not silent: print zip(misdefined_indexes, map(lambda x: (element_lists[1][x], flavour_lists[1][x]), misdefined_indexes))
 
         # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
         if hard_fail:

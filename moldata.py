@@ -4,7 +4,7 @@ def atom_types_for_indexes(indexes_list, atoms):
     return [ [atoms[index]['type'] for index in indexes] for indexes in indexes_list ]
 
 def connected_atom_indexes_for_indexes(indexes_list, atoms):
-    return reduce(lambda x,y: x+y, [atoms[index]['conn'] for index in indexes_list])
+    return reduce(lambda x,y: x+y, [atoms[index]['conn'] for index in indexes_list], [])
 
 def sorted_atom_types_for_indexes(indexes_list, atoms):
     return [sorted(indexes) for indexes in atom_types_for_indexes(indexes_list, atoms) ]

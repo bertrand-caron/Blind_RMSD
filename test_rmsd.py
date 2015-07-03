@@ -26,7 +26,7 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN, debug=False, host='http://compbio.biosci.uq.edu.au/atb')
+api = API(api_token=API_TOKEN, debug=False, host='http://compbio.biosci.uq.edu.au/atb', timeout=600)
 
 SHOW_GRAPH = False
 
@@ -39,9 +39,11 @@ TEST_DATA_FILE = 'test_data.yml'
 ERROR_LOG_FILE = 'log.err'
 ERROR_LOG = open(ERROR_LOG_FILE, 'w')
 
+UNITED = True
+
 def download_molecule_files(molecule_name, inchi):
     def sorted_mols_for_InChI(inchi):
-        matches = api.search(key='InChI', value=inchi)
+        matches = api.Molecules.search(key='InChI', value=inchi)
         sorted_molecules = sorted(matches, key=lambda m: (not m.has_TI, m.molid))
         print 'Results: {0} (Inchi was: "{1}")'.format(map(lambda m:m.molid, sorted_molecules), inchi)
         return sorted_molecules
@@ -138,16 +140,14 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     to_delete_molecules, to_delete_NOW_molecules = [], []
     pymol_files = []
 
-    def nm_to_A(x):
-        return 10*x
-
     for i, mol1 in enumerate(molecules):
         with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='yml')) as fh: data1 = yaml.load(fh.read())
         atoms1 = data1['atoms'].items()
-        point_list1 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms1]
-        flavour_list1 = flavour_list(data1)
-        element_list1 = element_list(data1)
-        pdb_lines1 = '\n'.join([atom['pdb'] for index, atom in atoms1])
+
+        point_list1 = point_list(data1, UNITED)
+        flavour_list1 = flavour_list(data1, UNITED)
+        element_list1 = element_list(data1, UNITED)
+        pdb_lines1 = pdb_lines(data1, UNITED)
         m1 = pmx.Model(pdbline=pdb_lines1)
 
         for j, mol2 in enumerate(molecules):
@@ -157,11 +157,11 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
 
             with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='yml')) as fh: data2 = yaml.load(fh.read())
             atoms2 = data2['atoms'].items()
-            point_list2 = [ map(nm_to_A, atom['ocoord']) for index, atom in atoms2]
+            point_list2 = point_list(data2, UNITED)
             point_lists = [point_list1, point_list2]
 
-            flavour_list2 = flavour_list(data2)
-            element_list2 = element_list(data2)
+            flavour_list2 = flavour_list(data2, UNITED)
+            element_list2 = element_list(data2, UNITED)
 
             flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
@@ -209,6 +209,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     #print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
     #print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
     if not (no_delete or debug): print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
+    else: print 'Running in no_delete / debug mode. Otherwise, would have deleted molids: {0}'.format([mol.molid for mol in to_delete_NOW_molecules])
     print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):
@@ -237,7 +238,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.duplicated_inchis(offset=0, limit=5000, min_n_atoms=0)['molecules']
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=5000, min_n_atoms=0)['molecules']
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
@@ -245,6 +246,8 @@ if __name__ == "__main__":
                 mol['molecule_name'] = mol['molecule_name'].replace(' ','_')
             if '/' in mol['molecule_name']:
                 mol['molecule_name'] = mol['molecule_name'].replace('/','_')
+            if len(mol['molecule_name']) >= 75:
+                mol['molecule_name'] = mol['molecule_name'][0:75]
     else:
         with open(TEST_DATA_FILE) as fh: test_molecules = yaml.load(fh.read())
 

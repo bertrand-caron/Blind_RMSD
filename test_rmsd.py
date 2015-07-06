@@ -6,7 +6,6 @@ import logging
 import pmx
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
 import yaml
-#sys.path.append("../")
 import urllib2
 from os.path import exists, dirname
 
@@ -15,7 +14,8 @@ from scoring import rmsd, ad
 from copy import deepcopy
 import shutil
 import numpy
-from atb.api import API
+sys.path.append("../../ATB/")
+from API_client.atb.api import API
 numpy.set_printoptions(precision=3, linewidth=300)
 from align import group_by
 from moldata import *
@@ -26,7 +26,7 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN, debug=False, host='http://compbio.biosci.uq.edu.au/atb', timeout=600)
+api = API(api_token=API_TOKEN, debug=True, host='http://compbio.biosci.uq.edu.au/atb', timeout=600)
 
 SHOW_GRAPH = False
 

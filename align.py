@@ -75,13 +75,13 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[0]) < 3 :
-        return (centered_point_arrays[0]).tolist(), 0.0, (centered_point_arrays[3])
+        return (centered_point_arrays[0]).tolist(), 0.0, (centered_point_arrays[2])
 
     # Break now if there are no rotational component
     if distance_function(*centered_point_arrays[0:2]) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         assert_found_permutation(*centered_point_arrays[0:2], silent=silent)
-        return (centered_point_arrays[0] + center_of_geometries[1]).tolist(), distance_function(*centered_point_arrays[0:2]), (centered_point_arrays[3] + center_of_geometries[1]).tolist()
+        return (centered_point_arrays[0] + center_of_geometries[1]).tolist(), distance_function(*centered_point_arrays[0:2]), (centered_point_arrays[2] + center_of_geometries[1]).tolist()
 
     method_results = {}
     if not DISABLE_BRUTEFORCE_METHOD:
@@ -99,7 +99,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     if has_extra_points:
         U, Pc, Qc = method_results[best_method]['matrices']
-        aligned_extra_points_array = np.dot(centered_point_arrays[3] - Pc, U) + Qc
+        aligned_extra_points_array = np.dot(centered_point_arrays[2] - Pc, U) + Qc
 
     if best_match == None:
         if not soft_fail: raise Exception("Best match is None. Something went wrong.")
@@ -109,6 +109,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
     
     corrected_best_match = best_match - center_of_geometry(best_match) + center_of_geometries[1]
+    corrected_extra_points = aligned_extra_points_array - center_of_geometry(aligned_extra_points_array) + center_of_geometries[1]
     assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
 
     def assert_found_permutation_array(array1, array2, mask_array=None, silent=True, hard_fail=False):
@@ -146,7 +147,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     assert_found_permutation_array(corrected_best_match, point_arrays[1], mask_array=mask_array if mask_array is not None else None, silent=silent)
     
-    return corrected_best_match.tolist(), method_results[best_method]['score'], aligned_extra_points_array.tolist() if has_extra_points else []
+    return corrected_best_match.tolist(), method_results[best_method]['score'], corrected_extra_points.tolist() if has_extra_points else []
 
 ### METHODS ###
 

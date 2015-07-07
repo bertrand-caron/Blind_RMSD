@@ -38,6 +38,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if not has_flavours:
         flavour_lists = map(lambda a_list: range(len(a_list)), element_lists)
         has_flavours = True
+    has_extra_points = True if extra_points and all(flavour_lists) else False
 
     # Assert that the fitting make sense
     assert len(point_lists[0]) == len(point_lists[1]), "Error: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists))
@@ -307,13 +308,18 @@ and
             kabsched_list1 = np.dot(point_arrays[0]-Pc, U) + Qc
             current_score = distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
             if (not best_score) or current_score <= best_score:
-                best_match, best_score = kabsched_list1, current_score
+                best_match, best_score, best_matrixes = kabsched_list1, current_score, (U, Pc, Qc)
                 if not silent: print "    Info: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
                 if current_score <= score_tolerance: return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
             if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_arrays[0] - Pc, "P1-Pc"), (point_arrays[1] - Qc, "P2-Qc")])
 
         if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)
-        return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
+        return {
+            'array': best_match.tolist(),
+            'score': best_score,
+            'reference_array': point_arrays[1],
+            'matrixes': best_matrixes,
+        }
     else:
         assert map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]) == map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]), map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS]))
         
@@ -324,10 +330,15 @@ and
 
         if show_graph: do_show_graph([(kabsched_list1, "P1_kabsch"), (point_arrays[1], "P2")])
 
-        current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
+        current_match, current_score, current_matrixes = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent), (U, Pc, Qc)
         
         if not silent: print "    Info: Klabsch algorithm on unique element types found a better match with a Score of {0}".format(current_score)
-        return {'array': current_match.tolist(), 'score': current_score, 'reference_array': point_arrays[1]}
+        return {
+            'array': current_match.tolist(),
+            'score': current_score,
+            'reference_array': point_arrays[1],
+            'matrixes': current_matrixes,
+        }
 
 def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     point_arrays = map(np.array, point_lists)
@@ -338,7 +349,10 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
 
     current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[1], silent=silent)
     if not silent: print "    Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
-    return {'array': current_match.tolist(), 'score': current_score}
+    return {
+        'array': current_match.tolist(),
+        'score': current_score,
+    }
 
 def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     N_BRUTEFORCE_KABSCH = 4
@@ -362,7 +376,10 @@ def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_a
             best_match, best_score = kabsched_list1, current_score
             if not silent: print "    Info: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(best_score=best_score, N=N_BRUTEFORCE_KABSCH)
     if not silent: print "    Info: Minimum Score from bruteforce Kabsch method is: {0}".format(best_score)
-    return {'array': current_match.tolist(), 'score': best_score}
+    return {
+        'array': current_match.tolist(),
+        'score': best_score,
+    }
 
 #################
 #### HELPERS ####

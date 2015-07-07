@@ -147,7 +147,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
         point_list1 = point_list(data1, UNITED)
         flavour_list1 = flavour_list(data1, UNITED)
         element_list1 = element_list(data1, UNITED)
-        pdb_lines1 = pdb_lines(data1, UNITED)
+        pdb_lines1 = pdb_str(data1, UNITED)
         m1 = pmx.Model(pdbline=pdb_lines1)
 
         for j, mol2 in enumerate(molecules):

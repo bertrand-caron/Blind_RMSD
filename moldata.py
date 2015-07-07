@@ -36,7 +36,10 @@ def element_list(data, united=False):
     return [ atom['type'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
 
 def pdb_lines(data, united=False):
-    return '\n'.join([atom['pdb'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ])
+    return [atom['pdb'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
+
+def pdb_str(data, united=False):
+    return '\n'.join(pdb_lines(data, united))
 
 def nm_to_A(x):
     return 10*x

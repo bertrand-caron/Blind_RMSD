@@ -208,8 +208,15 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             fj.write(' wget "{HOST}/api/current/molecules/delete_duplicate.py?molid={molid}&confirm=true"\n'.format(HOST=api.host, molid=molid))
     #print "Could delete following molids: {0} (indexes: {1})".format(to_delete_molids, [i for i, mol in enumerate(molecules) if mol.molid in to_delete_molids])
     #print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
-    if not (no_delete or debug): print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
-    else: print 'Running in no_delete / debug mode. Otherwise, would have deleted molids: {0}'.format([mol.molid for mol in to_delete_NOW_molecules])
+    if not (no_delete or debug): 
+        try:
+            print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
+        except HTTPError, e:
+            print 'Something went wrong while trying to delte duplicate. Error was: '
+            print e
+    else:
+        print 'Running in no_delete / debug mode. Otherwise, would have deleted molids: {0}'.format([mol.molid for mol in to_delete_NOW_molecules])
+
     print NEXT_TEST_STR
 
 class Test_RMSD(unittest.TestCase):

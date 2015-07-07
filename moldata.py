@@ -42,7 +42,7 @@ def nm_to_A(x):
     return 10*x
 
 def point_list(data, united=False):
-    return [ map(nm_to_A, atom['ocoord']) for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
+    return [ map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord']) for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
 
 # Differentiate -1's
 def split_equivalence_group(eq_list):

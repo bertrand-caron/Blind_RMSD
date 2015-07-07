@@ -40,8 +40,6 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         has_flavours = True
 
     has_extra_points = (extra_points != [])
-    if has_extra_points:
-        extra_points_array = np.array(extra_points)
 
     # Assert that the fitting make sense
     assert len(point_lists[0]) == len(point_lists[1]), "Error: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists))
@@ -54,7 +52,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         assert len(element_lists[0]) == len(point_lists[1]), "Error: Size of element lists doesn't match size of point lists: {0} and {1}".format(*map(len, [element_lists[0], point_lists[1]]))
         assert sorted(element_lists[0]) == sorted(element_lists[1]), "Error: There is not a one to one mapping of the element sets: {0} and {1}".format(*map(sorted, element_lists))
 
-    point_arrays = map(np.array, point_lists)
+    point_arrays = map(np.array, point_lists + [extra_points])
     center_of_geometries = map(center_of_geometry, point_arrays)
     if has_elements:
         grouped_flavours_lists = map(lambda index:group_by(flavour_lists[index], lambda x:x ), ON_BOTH_LISTS)
@@ -70,25 +68,25 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array if mask_array is not None else None, **kwargs) if not use_AD else ad_array
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
-    centered_point_arrays = [point_arrays[0] - center_of_geometries[0], point_arrays[1] - center_of_geometries[1]]
+    centered_point_arrays = [ a_point_array - a_center_of_geometry for a_point_array, a_center_of_geometry in zip(point_arrays, center_of_geometries) ]
 
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
-    [ assert_array_equal( center_of_geometry(a), np.array([0,0,0])) for a in centered_point_arrays ]
+    [ assert_array_equal( center_of_geometry(array), np.array([0,0,0])) for array in centered_point_arrays ]
 
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[0]) < 3 :
-        return (centered_point_arrays[0]).tolist(), 0.0
+        return (centered_point_arrays[0]).tolist(), 0.0, (centered_point_arrays[3])
 
     # Break now if there are no rotational component
-    if distance_function(*centered_point_arrays) <= score_tolerance and ALLOW_SHORTCUTS:
+    if distance_function(*centered_point_arrays[0:2]) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
-        assert_found_permutation(*centered_point_arrays, silent=silent)
-        return (centered_point_arrays[0] + center_of_geometries[1]).tolist(), distance_function(*centered_point_arrays)
+        assert_found_permutation(*centered_point_arrays[0:2], silent=silent)
+        return (centered_point_arrays[0] + center_of_geometries[1]).tolist(), distance_function(*centered_point_arrays[0:2]), (centered_point_arrays[3] + center_of_geometries[1]).tolist()
 
     method_results = {}
     if not DISABLE_BRUTEFORCE_METHOD:
         # Try the bruteforce method first
-        method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays, distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
+        method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays[0:2], distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
         method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
         method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
 
@@ -101,7 +99,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     if has_extra_points:
         U, Pc, Qc = method_results[best_method]['matrices']
-        aligned_extra_points_array = np.dot(extra_points_array-Pc, U) + Qc
+        aligned_extra_points_array = np.dot(centered_point_arrays[3] - Pc, U) + Qc
 
     if best_match == None:
         if not soft_fail: raise Exception("Best match is None. Something went wrong.")

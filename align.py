@@ -30,7 +30,7 @@ DISABLE_BRUTEFORCE_METHOD = True
 BYPASS_SILENT = False
 
 # Align points on points
-def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=None):
+def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[]):
 
     # Initializers
     has_elements = True if element_lists and all(element_lists) else False
@@ -38,7 +38,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if not has_flavours:
         flavour_lists = map(lambda a_list: range(len(a_list)), element_lists)
         has_flavours = True
-    has_extra_points = True if extra_points and all(flavour_lists) else False
+
+    has_extra_points = (extra_points != [])
+    if has_extra_points:
+        extra_points_array = np.array(extra_points)
 
     # Assert that the fitting make sense
     assert len(point_lists[0]) == len(point_lists[1]), "Error: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists))
@@ -95,6 +98,11 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     best_method = sorted(method_results.items(), key=lambda x:x[1]['score'] if 'score' in x[1] else 100.)[0][0]
     best_match = method_results[best_method]['array']
+
+    if has_extra_points:
+        U, Pc, Qc = method_results[best_method]['matrices']
+        aligned_extra_points_array = np.dot(extra_points_array-Pc, U) + Qc
+
     if best_match == None:
         if not soft_fail: raise Exception("Best match is None. Something went wrong.")
         else: return None, float('inf')
@@ -140,7 +148,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     assert_found_permutation_array(corrected_best_match, point_arrays[1], mask_array=mask_array if mask_array is not None else None, silent=silent)
     
-    return corrected_best_match.tolist(), method_results[best_method]['score']
+    return corrected_best_match.tolist(), method_results[best_method]['score'], aligned_extra_points_array.tolist() if has_extra_points else []
 
 ### METHODS ###
 
@@ -318,7 +326,7 @@ and
             'array': best_match.tolist(),
             'score': best_score,
             'reference_array': point_arrays[1],
-            'matrixes': best_matrixes,
+            'matrices': best_matrixes,
         }
     else:
         assert map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]) == map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS]), "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]), map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS]))
@@ -337,7 +345,7 @@ and
             'array': current_match.tolist(),
             'score': current_score,
             'reference_array': point_arrays[1],
-            'matrixes': current_matrixes,
+            'matrices': current_matrixes,
         }
 
 def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):

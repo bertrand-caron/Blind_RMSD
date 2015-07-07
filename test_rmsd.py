@@ -103,7 +103,7 @@ def molecule_test_alignment_generator(test_datum):
         sys.stderr.write("\n")
         #logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
+        aligned_point_list1, best_score, extra_points = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
         #for i, atom in enumerate(m1.atoms):
         #    atom.x = aligned_point_list1[i]
         #m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned_on_0", extension='pdb'))
@@ -149,6 +149,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
         element_list1 = element_list(data1, UNITED)
         pdb_lines1 = pdb_str(data1, UNITED)
         m1 = pmx.Model(pdbline=pdb_lines1)
+        extra_points1 = deepcopy(point_list1)
 
         for j, mol2 in enumerate(molecules):
             if j >= i: continue
@@ -167,9 +168,12 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
 
             # This will throw errors outside of the try block in debug mode
             if debug:
-                aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+                aligned_point_list1, best_score, extra_points = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, extra_points=extra_points1)
+                print aligned_point_list1
+                print extra_points
+                exit()
             try:
-                aligned_point_list1, best_score = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd)
+                aligned_point_list1, best_score, extra_points = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, extra_points=extra_points1)
             except Exception, e:
                 print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
                 ERROR_LOG.write('ERROR: InChI={inchi}, molids={molids}, msg="{msg}"\n'.format(inchi=mol1.inchi, msg=e, molids=[mol1.molid, mol2.molid]))

@@ -53,6 +53,28 @@ def united_hydrogens_point_list(data, united=False):
 def united_hydrogens_pdb_lines(data, united=False):
     return [ atom['pdb'] for _, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
 
+def aligned_pdb_str(data, alignment, united=False):
+    from StringIO import StringIO
+    pdb_str = StringIO()
+
+    atom_count = 0
+    for line in pdb_lines(data, united):
+        fields = line.split()
+        if len(fields) != 11: print >> pdb_str, line
+        else:
+            print >> pdb_str, '{0:6s}{1:>5} {2:>4} {3:>3} {4:>4}    {5:8.3f}{6:8.3f}{7:8.3f}{8:>6}{9:>6}          {10:>2}'.format(*(fields[0:5] + alignment[0][atom_count] + fields[8:]))
+            atom_count += 1
+
+    atom_count = 0
+    for line in united_hydrogens_pdb_lines(data, united):
+        fields = line.split()
+        if len(fields) != 11: print >> pdb_str, line
+        else:
+            print >> pdb_str, '{0:6s}{1:>5} {2:>4} {3:>3} {4:>4}    {5:8.3f}{6:8.3f}{7:8.3f}{8:>6}{9:>6}          {10:>2}'.format(*(fields[0:5] + alignment[2][atom_count] + fields[8:]))
+            atom_count += 1
+
+    return pdb_str.getvalue()
+
 # Differentiate -1's
 def split_equivalence_group(eq_list):
     accu = 0

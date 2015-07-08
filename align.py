@@ -29,6 +29,8 @@ DISABLE_BRUTEFORCE_METHOD = True
 
 BYPASS_SILENT = False
 
+DEFAULT_MATRICES = (np.identity(3), np.array([0.,0.,0.]), np.array([0.,0.,0.]))
+
 # Align points on points
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[]):
 
@@ -274,7 +276,12 @@ and
 
         if N_ambiguous_points < missing_points:
             if not silent: print "    Error: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(P=N_ambiguous_points, M=len(unique_points_lists[0]), N=MIN_N_UNIQUE_POINTS)
-            return {'array': None, 'score': None, 'reference_array': point_arrays[1]}
+            return {
+                'array': None,
+                'score': None,
+                'reference_array': point_arrays[1],
+                'matrixes': DEFAULT_MATRICES,
+                }
 
         if not silent: print "    Info: Found enough point ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points)
 
@@ -320,7 +327,13 @@ and
             if (not best_score) or current_score <= best_score:
                 best_match, best_score, best_matrixes = kabsched_list1, current_score, (U, Pc, Qc)
                 if not silent: print "    Info: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
-                if current_score <= score_tolerance: return {'array': best_match.tolist(), 'score': best_score, 'reference_array': point_arrays[1]}
+                if current_score <= score_tolerance: 
+                    return {
+                        'array': best_match.tolist(),
+                        'score': best_score,
+                        'reference_array': point_arrays[1],
+                        'matrices': best_matrixes,
+                    }
             if show_graph: do_show_graph([(P-Pc,"P-Pc"), (Q-Qc, "Q-Qc"), (point_arrays[0] - Pc, "P1-Pc"), (point_arrays[1] - Qc, "P2-Qc")])
 
         if not silent: print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)

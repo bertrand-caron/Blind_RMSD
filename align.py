@@ -69,7 +69,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array if mask_array is not None else None, **kwargs) if not use_AD else ad_array
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
-    centered_point_arrays = [ a_point_array - a_center_of_geometry for a_point_array, a_center_of_geometry in zip(point_arrays[0:2], center_of_geometries[0:2]) ] + [point_arrays[2] - center_of_geometries[0]]
+    centered_point_arrays = [ a_point_array - a_center_of_geometry for a_point_array, a_center_of_geometry in zip(point_arrays[0:2], center_of_geometries[0:2]) ] + [ ( point_arrays[2] - center_of_geometries[0] if has_extra_points else None)  ]
 
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
     [ assert_array_equal( center_of_geometry(array), np.array([0,0,0])) for array in centered_point_arrays[0:2] ]
@@ -101,6 +101,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if has_extra_points:
         U, Pc, Qc = method_results[best_method]['matrices']
         aligned_extra_points_array = np.dot(centered_point_arrays[2] - Pc, U) + Qc
+    else:
+        aligned_extra_points_array = None
 
     if best_match == None:
         if not soft_fail: raise Exception("Best match is None. Something went wrong.")
@@ -110,7 +112,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
     
     corrected_best_match = best_match - center_of_geometry(best_match) + center_of_geometries[1]
-    corrected_extra_points = aligned_extra_points_array - center_of_geometry(best_match) + center_of_geometries[1]
+    corrected_extra_points = aligned_extra_points_array - center_of_geometry(best_match) + center_of_geometries[1] if has_extra_points else None
     assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
 
     def assert_found_permutation_array(array1, array2, mask_array=None, silent=True, hard_fail=False):

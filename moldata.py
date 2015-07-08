@@ -47,6 +47,12 @@ def nm_to_A(x):
 def point_list(data, united=False):
     return [ map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord']) for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
 
+def united_hydrogens_point_list(data, united=False):
+    return [ map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord']) for index, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
+
+def united_hydrogens_pdb_lines(data, united=False):
+    return [ atom['pdb'] for _, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
+
 # Differentiate -1's
 def split_equivalence_group(eq_list):
     accu = 0

@@ -54,6 +54,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     point_arrays = map(np.array, point_lists + [extra_points])
     center_of_geometries = map(center_of_geometry, point_arrays)
+
     if has_elements:
         grouped_flavours_lists = map(lambda index:group_by(flavour_lists[index], lambda x:x ), ON_BOTH_LISTS)
         chemical_points_lists = get_chemical_points_lists(point_lists, element_lists, flavour_lists, has_flavours, grouped_flavours_lists)
@@ -68,10 +69,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array if mask_array is not None else None, **kwargs) if not use_AD else ad_array
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
-    centered_point_arrays = [ a_point_array - a_center_of_geometry for a_point_array, a_center_of_geometry in zip(point_arrays, center_of_geometries) ]
+    centered_point_arrays = [ a_point_array - a_center_of_geometry for a_point_array, a_center_of_geometry in zip(point_arrays[0:2], center_of_geometries[0:2]) ] + [point_arrays[2] - center_of_geometries[0]]
 
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
-    [ assert_array_equal( center_of_geometry(array), np.array([0,0,0])) for array in centered_point_arrays ]
+    [ assert_array_equal( center_of_geometry(array), np.array([0,0,0])) for array in centered_point_arrays[0:2] ]
 
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[0]) < 3 :
@@ -109,7 +110,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
     
     corrected_best_match = best_match - center_of_geometry(best_match) + center_of_geometries[1]
-    corrected_extra_points = aligned_extra_points_array - center_of_geometry(aligned_extra_points_array) + center_of_geometries[1]
+    corrected_extra_points = aligned_extra_points_array - center_of_geometry(best_match) + center_of_geometries[1]
     assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[1]]), message="{0} != {1}")
 
     def assert_found_permutation_array(array1, array2, mask_array=None, silent=True, hard_fail=False):
@@ -300,7 +301,7 @@ and
         for group, N in zip(ambiguous_point_groups[1], N_list):
             unique_points_lists[1] += group[0:N]
 
-        best_match, best_score = None, None
+        best_match, best_score, best_matrixes = [None]*3
         for group_permutations in complete_permutation_list:
             ambiguous_unique_points = [deepcopy(unique_points_lists[0])]
             for group in group_permutations:

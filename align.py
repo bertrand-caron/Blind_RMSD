@@ -9,6 +9,7 @@ from scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_dis
 from permutations import N_amongst_array
 import pprint
 from ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
+from moldata import group_by
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -435,10 +436,3 @@ def distance(point1, point2):
 def center_of_geometry(point_array):
     return np.mean(point_array, axis=0)
 
-# A reimplemetation of python crappy itertool's groupby method with dictionnaries and less BS
-def group_by(iterable, key):
-    group_dict = {}
-    for obj in iterable:
-        group_dict.setdefault( key(obj), [])
-        group_dict[key(obj)].append(obj)
-    return group_dict

@@ -17,7 +17,7 @@ import numpy
 sys.path.append("../../ATB/")
 from API_client.atb.api import API
 numpy.set_printoptions(precision=3, linewidth=300)
-from align import group_by
+from moldata import group_by
 from moldata import *
 
 numerical_tolerance = 1e-5

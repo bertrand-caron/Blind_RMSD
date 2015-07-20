@@ -1,4 +1,7 @@
-from align import group_by
+from config.paths import load_atb_paths
+load_atb_paths()
+from atb_helpers.pdb import substitute_coordinates_in
+from atb_helpers.iterables import group_by
 
 def should_keep_atom(atom, united=False):
     return (united and 'uindex' in atom) or (not united)
@@ -62,7 +65,7 @@ def aligned_pdb_str(data, alignment, united=False):
         fields = line.split()
         if len(fields) != 11: print >> pdb_str, line
         else:
-            print >> pdb_str, '{0:6s}{1:>5} {2:>4} {3:>3} {4:>4}    {5:8.3f}{6:8.3f}{7:8.3f}{8:>6}{9:>6}          {10:>2}'.format(*(fields[0:5] + alignment[0][atom_count] + fields[8:]))
+            print >> pdb_str, substitute_coordinates_in(line, alignment[0][atom_count])
             atom_count += 1
 
     atom_count = 0
@@ -70,7 +73,7 @@ def aligned_pdb_str(data, alignment, united=False):
         fields = line.split()
         if len(fields) != 11: print >> pdb_str, line
         else:
-            print >> pdb_str, '{0:6s}{1:>5} {2:>4} {3:>3} {4:>4}    {5:8.3f}{6:8.3f}{7:8.3f}{8:>6}{9:>6}          {10:>2}'.format(*(fields[0:5] + alignment[2][atom_count] + fields[8:]))
+            print >> pdb_str, substitute_coordinates_in(line, alignment[2][atom_count])
             atom_count += 1
 
     return pdb_str.getvalue()

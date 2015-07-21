@@ -1,3 +1,6 @@
+install: Vector.py charnley_rmsd/kabsch.py pmx testing
+	echo 'Installed'
+
 test: Vector.py charnley_rmsd/kabsch.py pmx testing
 	make clean
 	python test_rmsd.py --auto | tee log.out

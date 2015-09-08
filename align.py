@@ -79,7 +79,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[0]) < 3 :
-        return (centered_point_arrays[0]).tolist(), 0.0, (centered_point_arrays[2].tolist())
+        return (centered_point_arrays[0]).tolist(), 0.0, (centered_point_arrays[2].tolist() if has_extra_points else None)
 
     # Break now if there are no rotational component
     if distance_function(*centered_point_arrays[0:2]) <= score_tolerance and ALLOW_SHORTCUTS:

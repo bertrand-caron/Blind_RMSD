@@ -26,7 +26,7 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN, debug=True, host='http://compbio.biosci.uq.edu.au/atb', timeout=600)
+api = API(api_token=API_TOKEN, debug=True, host='http://compbio.biosci.uq.edu.au/atb-new', timeout=600)
 
 SHOW_GRAPH = False
 
@@ -43,7 +43,7 @@ UNITED = True
 
 def download_molecule_files(molecule_name, inchi):
     def sorted_mols_for_InChI(inchi):
-        matches = api.Molecules.search(key='InChI', value=inchi)
+        matches = api.Molecules.search(InChI=inchi)
         sorted_molecules = sorted(matches, key=lambda m: (not m.has_TI, m.molid))
         print 'Results: {0} (Inchi was: "{1}")'.format(map(lambda m:m.molid, sorted_molecules), inchi)
         return sorted_molecules
@@ -56,7 +56,7 @@ def download_molecule_files(molecule_name, inchi):
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
                 # This was a disaster waiting to happen, don't assume that the mapping molid -> temporary index is permanent (which is it not, since we are deleting molecules !)
-                if not exists(file_name) or True: molecule.download(file_name, format=extension)
+                if not exists(file_name) or True: molecule.download_file(file_name, format=extension)
         except Exception, e:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=5000, min_n_atoms=0)['molecules']
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=5000, min_n_atoms=0)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

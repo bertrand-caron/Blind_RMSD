@@ -15,7 +15,7 @@ from copy import deepcopy
 import shutil
 import numpy
 sys.path.append("../../ATB/")
-from API_client.atb.api import API
+from API_client.api import API
 numpy.set_printoptions(precision=3, linewidth=300)
 from moldata import group_by
 from moldata import *
@@ -26,7 +26,7 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN, debug=True, host='http://compbio.biosci.uq.edu.au/atb-new', timeout=600)
+api = API(api_token=API_TOKEN, debug=True, host='https://atb.uq.edu.au', timeout=600)
 
 SHOW_GRAPH = False
 
@@ -246,6 +246,7 @@ def parse_command_line():
     return args
 
 if __name__ == "__main__":
+    from re import sub
     args = parse_command_line()
 
     if args.auto:
@@ -253,12 +254,9 @@ if __name__ == "__main__":
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
-            if ' ' in mol['molecule_name']:
-                mol['molecule_name'] = mol['molecule_name'].replace(' ','_')
-            if '/' in mol['molecule_name']:
-                mol['molecule_name'] = mol['molecule_name'].replace('/','_')
+            mol['molecule_name'] = sub('[\[\]\(\)~`$]', '', mol['molecule_name']).replace(' ', '_').replace('/', '_')
             if len(mol['molecule_name']) >= 75:
-                mol['molecule_name'] = mol['molecule_name'][0:75]
+                mol['molecule_name'] = mol['molecule_name'][0:75] + '_' + str(i)
     else:
         with open(TEST_DATA_FILE) as fh: test_molecules = yaml.load(fh.read())
 

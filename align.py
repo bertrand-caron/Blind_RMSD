@@ -162,9 +162,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
             else:
                 if not silent or BYPASS_SILENT:
                     print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
-                final_permutation = zip(*perm_list)[1]
+                final_permutation = perm_list
         return final_permutation
-
 
     final_permutation = assert_found_permutation_array(corrected_best_match, point_arrays[1], mask_array=mask_array if mask_array is not None else None, silent=silent)
 

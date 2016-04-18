@@ -158,14 +158,22 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
                 if not silent or BYPASS_SILENT:
                     print "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0]))
                     print "Error: Troublesome indexes are {0}".format(misdefined_indexes)
+                final_permutation = None
             else:
                 if not silent or BYPASS_SILENT:
                     print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+                final_permutation = zip(*perm_list)[1]
+        return final_permutation
 
 
-    assert_found_permutation_array(corrected_best_match, point_arrays[1], mask_array=mask_array if mask_array is not None else None, silent=silent)
+    final_permutation = assert_found_permutation_array(corrected_best_match, point_arrays[1], mask_array=mask_array if mask_array is not None else None, silent=silent)
 
-    return corrected_best_match.tolist(), method_results[best_method]['score'], corrected_extra_points.tolist() if has_extra_points else []
+    return (
+        corrected_best_match.tolist(),
+        method_results[best_method]['score'],
+        corrected_extra_points.tolist() if has_extra_points else [],
+        final_permutation,
+    )
 
 ### METHODS ###
 

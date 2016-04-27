@@ -44,7 +44,7 @@ def getFig():
         return _ax
     else:
         _fig = pylab.figure(1)
-        _fig.hold(True)
+        _fig.hold = True
         _ax = mpl_toolkits.mplot3d.Axes3D(_fig)
         return _ax
 

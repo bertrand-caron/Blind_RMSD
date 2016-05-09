@@ -41,6 +41,9 @@ def element_list(data, united=False):
 def pdb_lines(data, united=False):
     return [atom['pdb'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
 
+def connect_lines(data):
+    return ['CONECT{0:5d}{1:5d}'.format(*bond['atoms']) for bond in data['bonds']]
+
 def pdb_str(data, united=False):
     return '\n'.join(pdb_lines(data, united))
 
@@ -90,6 +93,9 @@ def aligned_pdb_str(data, alignment, united=False):
         else:
             print >> pdb_str, substitute_coordinates_in(line, united_H_coordinates[atom_count])
             atom_count += 1
+
+    for connect_line in connect_lines(data):
+        print >> pdb_str, connect_line
 
     return pdb_str.getvalue()
 

@@ -1,17 +1,19 @@
 import numpy as np
 np.set_printoptions(precision=1, linewidth=300)
-from Vector import Vector, rotmat, m2rotaxis
 from itertools import product, groupby, permutations
 from functools import partial
-from charnley_rmsd import kabsch
 from copy import deepcopy
-from scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_distance_matrix
-from permutations import N_amongst_array
-import pprint
-from ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
-from moldata import group_by
+from pprint import PrettyPrinter
 
-pp = pprint.PrettyPrinter(indent=2)
+from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
+from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
+from Blind_RMSD.helpers.moldata import group_by
+from Blind_RMSD.helpers.permutations import N_amongst_array
+from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_distance_matrix
+
+from Blind_RMSD.lib.charnley_rmsd import kabsch
+
+pp = PrettyPrinter(indent=2)
 
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
@@ -146,7 +148,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     # Break now if there are no rotational component
     if distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
-        assert_found_permutation(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], silent=silent)
+        assert_found_permutation_array(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], silent=silent)
         return (
             (centered_point_arrays[FIRST_STRUCTURE] + center_of_geometries[SECOND_STRUCTURE]).tolist(),
             distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]),

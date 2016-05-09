@@ -1,5 +1,3 @@
-from config.paths import load_atb_paths
-load_atb_paths()
 from atb_helpers.pdb import substitute_coordinates_in
 from atb_helpers.iterables import group_by
 

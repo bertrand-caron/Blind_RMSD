@@ -1,16 +1,20 @@
+PYTHONPATH = PYTHONPATH="/home/$$USER/ATB:/home/$$USER/ATB-Dependencies"
+
+PYTHON_EXEC = $(PYTHONPATH) python
+
 install: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	echo 'Installed'
 
 clean_atb_duplicates: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	make clean
-	python $@.py --auto | tee log.out
+	$(PYTHON_EXEC) tasks/$@.py --auto --nodelete | tee log.out
 .PHONY: clean_atb_duplicates
 
 test-pymol: test
 	pymol -M testing/ethanol/*.pdb
 
 helpers/Vector.py: lib/biopython
-	ln -s $</Bio/PDB/$@ $@
+	ln -s ../$</Bio/PDB/Vector.py $@
 	touch $@
 
 lib/biopython:
@@ -34,3 +38,7 @@ pmx:
 clean:
 	rm -rf testing/*
 .PHONY: clean
+
+errors:
+	$(PYTHONPATH) pylint -E *.py helpers/*.py tasks/*.py
+.PHONY: errors

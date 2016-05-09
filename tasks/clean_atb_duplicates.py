@@ -5,20 +5,18 @@ import os
 import logging
 import pmx
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
-import yaml
+from yaml import load, dump
 import urllib2
-from os.path import exists, dirname
-
-import align
-from scoring import rmsd, ad
+from os.path import exists, dirname, join
 from copy import deepcopy
 import shutil
 import numpy
-sys.path.append("../../ATB/")
-from API_client.api import API
 numpy.set_printoptions(precision=3, linewidth=300)
-from moldata import group_by
-from moldata import *
+
+from Blind_RMSD.align import pointsOnPoints
+from Blind_RMSD.helpers.scoring import rmsd, ad
+from API_client.api import API
+from Blind_RMSD.helpers.moldata import group_by, split_equivalence_group, point_list, flavour_list, element_list, pdb_str
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd
@@ -26,7 +24,8 @@ scoring_function = rmsd
 FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
-api = API(api_token=API_TOKEN, debug=True, host='https://atb.uq.edu.au', timeout=600)
+ATB_HOST = 'https://atb.uq.edu.au'
+api = API(api_token=API_TOKEN, debug=True, host=ATB_HOST, timeout=600)
 
 SHOW_GRAPH = False
 
@@ -50,13 +49,14 @@ def download_molecule_files(molecule_name, inchi):
 
     print 'Testing molecule: {0}'.format(molecule_name)
     molecules =  sorted_mols_for_InChI(inchi)
+
     for version, molecule  in enumerate(molecules):
         try:
-            for extension in ['pdb', 'yml']:
+            for extension in ['pdb_aa', 'yml']:
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
                 # This was a disaster waiting to happen, don't assume that the mapping molid -> temporary index is permanent (which is it not, since we are deleting molecules !)
-                if not exists(file_name) or True: molecule.download_file(file_name, atb_format=extension)
+                if not exists(file_name) or True: molecule.download_file(fnme=file_name, atb_format=extension)
         except Exception, e:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
@@ -84,26 +84,32 @@ def molecule_test_alignment_generator(test_datum):
 
         point_lists = [point_list1, point_list2]
 
-        with open(file1.format(extension='yml')) as fh: data1 = yaml.load(fh.read())
-        with open(file2.format(extension='yml')) as fh: data2 = yaml.load(fh.read())
+        with open(file1.format(extension='yml')) as fh: data1 = load(fh.read())
+        with open(file2.format(extension='yml')) as fh: data2 = load(fh.read())
         flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
         flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
         element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
         element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
 
         flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
-        
+
         def bond_matrix(data):
             def bond_line(data):
                 return [ 0 if index not in atom['conn'] else 1 for index in map(lambda x:x+1, range(0, len(data['atoms'])))]
             return [ bond_line(data) for _, atom in sorted(data['atoms'].items())]
-               
-        bonds = map(bond_matrix, [data1, data2])
 
         sys.stderr.write("\n")
         #logging.info("Score before alignment: {0:.4f}".format(scoring_function(point_list1, point_list2)))
 
-        aligned_point_list1, best_score, extra_points, final_permutation = align.pointsOnPoints(deepcopy(point_lists), silent=False, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, bonds=bonds )
+        aligned_point_list1, best_score, extra_points, final_permutation = pointsOnPoints(
+            deepcopy(point_lists),
+            silent=False,
+            use_AD=False,
+            element_lists=element_lists,
+            flavour_lists=flavour_lists,
+            show_graph=SHOW_GRAPH,
+            score_tolerance=expected_rmsd,
+        )
         #for i, atom in enumerate(m1.atoms):
         #    atom.x = aligned_point_list1[i]
         #m1.write(FILE_TEMPLATE.format(molecule_name=molecule_name, version="1_aligned_on_0", extension='pdb'))
@@ -141,7 +147,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     pymol_files = []
 
     for i, mol1 in enumerate(molecules):
-        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='yml')) as fh: data1 = yaml.load(fh.read())
+        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='yml')) as fh: data1 = load(fh.read())
         atoms1 = data1['atoms'].items()
 
         point_list1 = point_list(data1, UNITED)
@@ -156,7 +162,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(i, j), extension='pdb')
             if exists(aligned_pdb_file) and not OVERWRITE_RESULTS: continue
 
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='yml')) as fh: data2 = yaml.load(fh.read())
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='yml')) as fh: data2 = load(fh.read())
             atoms2 = data2['atoms'].items()
             point_list2 = point_list(data2, UNITED)
             point_lists = [point_list1, point_list2]
@@ -168,12 +174,30 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
 
             # This will throw errors outside of the try block in debug mode
             if debug:
-                aligned_point_list1, best_score, extra_points, final_permutation = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, extra_points=extra_points1)
+                aligned_point_list1, best_score, extra_points, final_permutation = pointsOnPoints(
+                    deepcopy(point_lists),
+                    silent=silent,
+                    use_AD=False,
+                    element_lists=element_lists,
+                    flavour_lists=flavour_lists,
+                    show_graph=SHOW_GRAPH,
+                    score_tolerance=expected_rmsd,
+                    extra_points=extra_points1,
+                )
                 print aligned_point_list1
                 print extra_points
                 exit()
             try:
-                aligned_point_list1, best_score, extra_points, final_permutation = align.pointsOnPoints(deepcopy(point_lists), silent=silent, use_AD=False, element_lists=element_lists, flavour_lists=flavour_lists, show_graph=SHOW_GRAPH, score_tolerance=expected_rmsd, extra_points=extra_points1)
+                aligned_point_list1, best_score, extra_points, final_permutation = pointsOnPoints(
+                    deepcopy(point_lists),
+                    silent=silent,
+                    use_AD=False,
+                    element_lists=element_lists,
+                    flavour_lists=flavour_lists,
+                    show_graph=SHOW_GRAPH,
+                    score_tolerance=expected_rmsd,
+                    extra_points=extra_points1,
+                )
             except Exception, e:
                 print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
                 ERROR_LOG.write('ERROR: InChI={inchi}, molids={molids}, msg="{msg}"\n'.format(inchi=mol1.inchi, msg=e, molids=[mol1.molid, mol2.molid]))
@@ -195,6 +219,12 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
     print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
     print matrix
+    print 'View these results online at URL: {0}'.format(
+        join(
+            ATB_HOST,
+            'index.py?tab=blind_rmsd_fit&molids={0}'.format(str([m.molid for m in molecules]).replace(' ', '')),
+        ),
+    )
 
     # Write the list of molids to delete in a file
     deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
@@ -215,7 +245,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     if not (no_delete or debug): 
         try:
             print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
-        except HTTPError, e:
+        except urllib2.HTTPError, e:
             print 'Something went wrong while trying to delte duplicate. Error was: '
             print e
     else:
@@ -250,7 +280,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=5000, min_n_atoms=0)
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=5, min_n_atoms=0)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
@@ -258,15 +288,21 @@ if __name__ == "__main__":
             if len(mol['molecule_name']) >= 75:
                 mol['molecule_name'] = mol['molecule_name'][0:75] + '_' + str(i)
     else:
-        with open(TEST_DATA_FILE) as fh: test_molecules = yaml.load(fh.read())
+        with open(TEST_DATA_FILE) as fh: test_molecules = load(fh.read())
 
-    print "Test data is:\n{0}\n".format(yaml.dump(test_molecules))
+    print "Test data is:\n{0}\n".format(dump(test_molecules))
     for test_datum in test_molecules:
         if args.only and test_datum['molecule_name'] not in args.only: continue
         if 'id1' in test_datum and 'id2' in test_datum:
             test = molecule_test_alignment_generator(test_datum)
             setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
-        get_distance_matrix(test_datum, silent=not args.debug, debug=args.debug, no_delete=args.nodelete, max_matrix_size=args.max_matrix_size)
+        get_distance_matrix(
+            test_datum,
+            silent=not args.debug,
+            debug=args.debug,
+            no_delete=args.nodelete,
+            max_matrix_size=args.max_matrix_size,
+        )
 
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

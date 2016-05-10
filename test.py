@@ -7,6 +7,7 @@ def pdb_str(test_ID):
 TEST_PAIRS = (
     (1, 2),
     (3, 4),
+    (5, 6),
 )
 
 if __name__ == '__main__':

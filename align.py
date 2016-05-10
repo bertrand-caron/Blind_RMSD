@@ -286,9 +286,14 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
         complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
 
+        if not silent:
+            print distance_matrix(complete_molecule_before)
+            print distance_matrix(complete_molecule_after)
+
         assert_array_equal(
             distance_matrix(complete_molecule_after),
             distance_matrix(complete_molecule_before),
+            rtol=0.2, # Because of the rotation, the coordinates get truncated quite a bit
         )
     else:
         corrected_extra_points = None

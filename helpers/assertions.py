@@ -6,8 +6,8 @@ BYPASS_SILENT = False
 def do_assert(something, error_msg):
     assert something, error_msg
 
-def assert_array_equal(array1, array2, message="{0} and {1} are different"):
-    assert np.allclose( array1, array2, atol=1e-5), message.format(array1, array2)
+def assert_array_equal(array1, array2, message="{0} and {1} are different", rtol=1e-5):
+    assert np.allclose( array1, array2, rtol=rtol), message.format(array1, array2)
 
 def assert_found_permutation_array(array1, array2, element_lists=None, flavour_lists=None, mask_array=None, silent=True, hard_fail=False):
     from Blind_RMSD.align import FIRST_STRUCTURE, SECOND_STRUCTURE

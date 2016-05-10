@@ -16,7 +16,7 @@ from Blind_RMSD.helpers.assertions import do_assert
 
 from Blind_RMSD.lib.charnley_rmsd import kabsch
 
-pp = PrettyPrinter(indent=2)
+pp = PrettyPrinter(indent=2).pprint
 
 on_self, on_first_element, on_second_element = lambda x:x, lambda x:x[0], lambda x:x[1]
 on_third_element, on_fourth_element = lambda x: x[2], lambda x: x[3]
@@ -240,6 +240,12 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if has_extra_points:
         transform_function = method_results[best_method]['transform']
         aligned_extra_points_array = transform_function(centered_point_arrays[EXTRA_POINTS])
+
+        # Make sure the correction has not distorted the inter-distances between extra_points
+        assert_array_equal(
+            distance_matrix(centered_point_arrays[EXTRA_POINTS]),
+            distance_matrix(aligned_extra_points_array),
+        )
     else:
         aligned_extra_points_array = None
 
@@ -255,11 +261,17 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         print "Info: Best score was achieved with method: {0}".format(best_method)
 
     def corrected(points_array):
-        return points_array - center_of_geometry(best_match) + center_of_geometries[SECOND_STRUCTURE]
+        return points_array - center_of_geometries[SECOND_STRUCTURE]
+        #return points_array - center_of_geometry(best_match) + center_of_geometries[SECOND_STRUCTURE]
 
     corrected_best_match = corrected(best_match)
     if has_extra_points:
         corrected_extra_points = corrected(aligned_extra_points_array)
+        # Make sure the correction has not distorted the inter-distances between extra_points
+        assert_array_equal(
+            distance_matrix(corrected_extra_points),
+            distance_matrix(extra_points),
+        )
     else:
         corrected_extra_points = None
 
@@ -310,6 +322,12 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         mask_array=mask_array if mask_array is not None else None,
         silent=silent,
     )
+
+    if not silent:
+        print extra_points
+        print corrected_extra_points
+        print corrected_extra_points - extra_points
+        print center_of_geometry(best_match)
 
     return Alignment(
         corrected_best_match.tolist(),

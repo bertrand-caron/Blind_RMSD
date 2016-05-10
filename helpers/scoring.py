@@ -21,7 +21,7 @@ def rmsd_array(point_array1, point_array2, mask_array = None, silent=True):
 
     distance_matrix = get_distance_matrix(point_array1, point_array2)
 
-    if mask_array != None:
+    if mask_array is not None:
         do_assert(
             mask_array.shape == distance_matrix.shape,
             'Error: Shapes of mask arrays do not match: {0} != {1}'.format(
@@ -49,7 +49,7 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=Tr
 
     distance_matrix = get_distance_matrix(point_array1, point_array2)
 
-    if mask_array != None:
+    if mask_array is not None:
         assert mask_array.shape == distance_matrix.shape, 'Error: Shapes of mask arrays do not match: {0} != {1}'.format(mask_array.shape, distance_matrix.shape)
     else:
         mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))

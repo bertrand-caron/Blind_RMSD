@@ -147,7 +147,13 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array if mask_array is not None else None, **kwargs) if not use_AD else ad_array
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
-    centered_point_arrays = [ a_point_array - a_center_of_geometry for a_point_array, a_center_of_geometry in zip(point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], center_of_geometries[FIRST_STRUCTURE:2]) ] + [ ( point_arrays[2] - center_of_geometries[FIRST_STRUCTURE] if has_extra_points else None)  ]
+    centered_point_arrays = [
+        (a_point_array - a_center_of_geometry)
+        for a_point_array, a_center_of_geometry in zip(
+            point_arrays,
+            center_of_geometries[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE] + [center_of_geometries[FIRST_STRUCTURE]],
+        )
+    ]
 
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
     [ assert_array_equal( center_of_geometry(array), ORIGIN) for array in centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE] ]
@@ -165,19 +171,44 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         assert_found_permutation_array(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], silent=silent)
+
+        def center_on_second_structure(point_array):
+            return point_array + center_of_geometries[SECOND_STRUCTURE]
+
         return Alignment(
-            (centered_point_arrays[FIRST_STRUCTURE] + center_of_geometries[SECOND_STRUCTURE]).tolist(),
+            center_on_second_structure(centered_point_arrays[FIRST_STRUCTURE]).tolist(),
             distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]),
-            (centered_point_arrays[SECOND_STRUCTURE] + center_of_geometries[SECOND_STRUCTURE]).tolist(),
+            center_on_second_structure(centered_point_arrays[EXTRA_POINTS]).tolist(),
             None,
         )
 
     method_results = {}
     if not DISABLE_BRUTEFORCE_METHOD:
         # Try the bruteforce method first
-        method_results['bruteforce'] = bruteforce_aligning_vectors_method(point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], distance_array_function=distance_array_function, score_tolerance=score_tolerance, silent=silent and True)
-        method_results['lucky_kabsch'] = lucky_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
-        method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(point_lists, element_lists, flavour_lists=flavour_lists, distance_array_function=distance_array_function, score_tolerance=score_tolerance, show_graph=show_graph, silent=silent)
+        method_results['bruteforce'] = bruteforce_aligning_vectors_method(
+            point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE],
+            distance_array_function=distance_array_function,
+            score_tolerance=score_tolerance,
+            silent=silent and True,
+        )
+        method_results['lucky_kabsch'] = lucky_kabsch_method(
+            point_lists,
+            element_lists,
+            flavour_lists=flavour_lists,
+            distance_array_function=distance_array_function,
+            score_tolerance=score_tolerance,
+            show_graph=show_graph,
+            silent=silent,
+        )
+        method_results['bruteforce_kabsch'] = bruteforce_kabsch_method(
+            point_lists,
+            element_lists,
+            flavour_lists=flavour_lists,
+            distance_array_function=distance_array_function,
+            score_tolerance=score_tolerance,
+            show_graph=show_graph,
+            silent=silent,
+        )
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:

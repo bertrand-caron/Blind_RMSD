@@ -6,7 +6,9 @@ from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT
 
 UNITED_RMSD_FIT = True
 
-PDB_Data = namedtuple('PDB_Data', 'data, point_lists, element_lists, flavour_lists, extra_points_lists')
+PDB_Data = namedtuple('PDB_Data', 'data, point_lists, element_lists, flavour_lists, extra_points_lists, pdb_str')
+
+FAILED_ALIGNMENT_PDB_STR = ''
 
 def pdb_data_for(pdb_str):
     data = partial_mol_data_for_pdbstr(pdb_str).__dict__
@@ -17,6 +19,7 @@ def pdb_data_for(pdb_str):
         element_lists = element_list(data, UNITED_RMSD_FIT),
         flavour_lists = flavour_list(data, UNITED_RMSD_FIT),
         extra_points_lists = united_hydrogens_point_list(data, UNITED_RMSD_FIT),
+        pdb_str = pdb_str,
     )
 
 def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, silent=True, soft_fail=True):
@@ -48,7 +51,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
         if io:
             #print >> io, '<p>Aligment Failed for PDB {0}.</p>'.format(i+1)
             print >> io, '<pre>{0}</pre>'.format(alignment)
-        final_aligned_pdb_str = (other_pdb_str if other_pdb_str else '')
+        final_aligned_pdb_str = other_pdb_data.pdb_str
     else:
         final_aligned_pdb_str = aligned_pdb_str(other_pdb_data.data, alignment, UNITED_RMSD_FIT)
 

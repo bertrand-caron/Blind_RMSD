@@ -45,6 +45,8 @@ INFINITE_RMSD = float('inf')
 
 Alignment = namedtuple('Alignment', 'aligned_points, score , extra_points, final_permutation')
 
+FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
+
 def do_assert(something, error_msg):
     assert something, error_msg
 
@@ -196,12 +198,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         if not soft_fail:
             raise Exception("Best match is None. Something went wrong.")
         else:
-            return Aligment(
-                None,
-                INFINITE_RMSD,
-                None,
-                None,
-            )
+            return FAILED_ALIGNMENT
 
     if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)

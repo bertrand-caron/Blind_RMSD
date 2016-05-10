@@ -268,7 +268,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=10, min_n_atoms=5)
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=100, min_n_atoms=5)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

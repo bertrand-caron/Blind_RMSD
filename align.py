@@ -171,12 +171,12 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         )
 
     # Break now if there are no rotational component
-    current_rmsd = distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE])
+    current_score = distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE])
 
     if not silent:
-        print 'INFO: {0}'.format(dict(current_rmsd=current_rmsd))
+        print 'INFO: {0}'.format(dict(current_score=current_score))
 
-    if current_rmsd <= score_tolerance and ALLOW_SHORTCUTS:
+    if current_score <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         assert_found_permutation_array(*
             centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE],
@@ -197,6 +197,14 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         )
 
     method_results = {}
+
+    method_results['translation'] = {
+        'array': centered_point_arrays[FIRST_STRUCTURE],
+        'score': current_score,
+        'reference_array': centered_point_arrays[SECOND_STRUCTURE],
+        'transform': NO_TRANSFORM,
+    }
+
     if not DISABLE_BRUTEFORCE_METHOD:
         # Try the bruteforce method first
         method_results['bruteforce'] = bruteforce_aligning_vectors_method(

@@ -69,7 +69,7 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=Tr
         closest_distance = None
         for point2 in range(mask_array.shape[0]):
             current_distance = distance_matrix[point1, point2] + mask_array[point1, point2]
-            if (not closest_distance) or current_distance <= closest_distance:
+            if (closest_distance is None) or current_distance <= closest_distance:
                 closest_distance = current_distance
         distances.append(closest_distance)
     rmsd = sqrt( mean( square( distances ) ) )

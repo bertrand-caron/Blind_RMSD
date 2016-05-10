@@ -283,13 +283,13 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
                 print
                 print center_of_geometry(best_match)
 
-            complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
-            complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
+        complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
+        complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
 
-            assert_array_equal(
-                distance_matrix(complete_molecule_after),
-                distance_matrix(complete_molecule_before),
-            )
+        assert_array_equal(
+            distance_matrix(complete_molecule_after),
+            distance_matrix(complete_molecule_before),
+        )
     else:
         corrected_extra_points = None
 

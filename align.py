@@ -34,6 +34,7 @@ BYPASS_SILENT = False
 ORIGIN, ZERO_VECTOR = np.array([0.,0.,0.]), np.array([0.,0.,0.])
 
 DEFAULT_MATRICES = (np.identity(3), ZERO_VECTOR, ZERO_VECTOR)
+NO_TRANSFORM = lambda point_array: point_array
 
 FIRST_STRUCTURE, SECOND_STRUCTURE = (0, 1)
 UNTIL_SECOND_STRUCTURE = SECOND_STRUCTURE + 1
@@ -50,8 +51,16 @@ FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
 def do_assert(something, error_msg):
     assert something, error_msg
 
+def transform_mapping(point_array_1, point_array_2):
+    P, Q = point_array_1, point_array_2
+    U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
+    transform = lambda point_array: np.dot(point_array - Pc, U) + Qc
+    return transform
+
 # Align points on points
 def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[]):
+    '''
+    '''
 
     # Initializers
     has_elements = True if element_lists and all(element_lists) else False
@@ -189,8 +198,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     best_match, best_score = method_results[best_method]['array'], method_results[best_method]['score']
 
     if has_extra_points:
-        U, Pc, Qc = method_results[best_method]['transform']
-        aligned_extra_points_array = np.dot(centered_point_arrays[EXTRA_POINTS] - Pc, U) + Qc
+        transform_function = method_results[best_method]['transform']
+        aligned_extra_points_array = transform_function(centered_point_arrays[EXTRA_POINTS])
     else:
         aligned_extra_points_array = None
 
@@ -443,7 +452,7 @@ and
                 'array': None,
                 'score': None,
                 'reference_array': point_arrays[SECOND_STRUCTURE],
-                'transform': DEFAULT_MATRICES,
+                'transform': NO_TRANSFORM,
             }
 
         if not silent:
@@ -492,13 +501,15 @@ and
                 "Error: Trying to match points whose elements don't match: {0} != {1}".format(map(on_elements, ambiguous_unique_points[FIRST_STRUCTURE]), map(on_elements, unique_points_lists[SECOND_STRUCTURE])),
             )
 
-            P, Q = map(on_coords, ambiguous_unique_points[FIRST_STRUCTURE]), map(on_coords, unique_points_lists[SECOND_STRUCTURE])
-            U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
-            kabsched_list1 = np.dot(point_arrays[FIRST_STRUCTURE] - Pc, U) + Qc
+            transform = transform_mapping(
+                map(on_coords, ambiguous_unique_points[FIRST_STRUCTURE]),
+                map(on_coords, unique_points_lists[SECOND_STRUCTURE]),
+            )
+            kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
             current_score = distance_array_function(kabsched_list1, point_arrays[SECOND_STRUCTURE], silent=silent)
 
             if (not best_score) or current_score <= best_score:
-                best_match, best_score, best_matrices = kabsched_list1, current_score, (U, Pc, Qc)
+                best_match, best_score, best_transform = kabsched_list1, current_score, transform
 
                 if not silent:
                     print "    Info: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score)
@@ -508,27 +519,30 @@ and
                         'array': best_match.tolist(),
                         'score': best_score,
                         'reference_array': point_arrays[SECOND_STRUCTURE],
-                        'transform': best_matrices,
+                        'transform': best_transform,
                     }
 
-            if show_graph:
-                do_show_graph(
-                    [
-                        (P-Pc,"P-Pc"),
-                        (Q-Qc, "Q-Qc"),
-                        (point_arrays[FIRST_STRUCTURE] - Pc, "P1-Pc"),
-                        (point_arrays[SECOND_STRUCTURE] - Qc, "P2-Qc"),
-                    ],
-                )
+#            if show_graph:
+#                do_show_graph(
+#                    [
+#                        (P-Pc,"P-Pc"),
+#                        (Q-Qc, "Q-Qc"),
+#                        (point_arrays[FIRST_STRUCTURE] - Pc, "P1-Pc"),
+#                        (point_arrays[SECOND_STRUCTURE] - Qc, "P2-Qc"),
+#                    ],
+#                )
 
         if not silent:
-            print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(MIN_N_UNIQUE_POINTS, best_score)
+            print "    Info: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(
+                MIN_N_UNIQUE_POINTS,
+                best_score,
+            )
 
         return {
             'array': best_match.tolist(),
             'score': best_score,
             'reference_array': point_arrays[SECOND_STRUCTURE],
-            'transform': best_matrices,
+            'transform': best_transform,
         }
     else:
         do_assert(
@@ -537,19 +551,26 @@ and
         )
 
         # Align those MIN_N_UNIQUE_POINTS points using Kabsch algorithm
-        P, Q = map(on_coords, unique_points_lists[FIRST_STRUCTURE]), map(on_coords, unique_points_lists[SECOND_STRUCTURE])
-        U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
-        kabsched_list1 = np.dot(point_arrays[FIRST_STRUCTURE] - Pc, U) + Qc
+        current_transform = transform_mapping(
+            map(on_coords, unique_points_lists[FIRST_STRUCTURE]),
+            map(on_coords, unique_points_lists[SECOND_STRUCTURE]),
+        )
+        kabsched_list1 = current_transform(point_arrays[FIRST_STRUCTURE])
 
-        if show_graph:
-            do_show_graph(
-                [
-                    (kabsched_list1, "P1_kabsch"),
-                    (point_arrays[SECOND_STRUCTURE], "P2"),
-                ],
-            )
+#        if show_graph:
+#            do_show_graph(
+#                [
+#                    (kabsched_list1, "P1_kabsch"),
+#                    (point_arrays[SECOND_STRUCTURE], "P2"),
+#                ],
+#            )
 
-        current_match, current_score, current_matrixes = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[SECOND_STRUCTURE], silent=silent), (U, Pc, Qc)
+        current_match = kabsched_list1
+        current_score= distance_array_function(
+            kabsched_list1,
+            point_arrays[SECOND_STRUCTURE],
+            silent=silent,
+        )
 
         if not silent:
             print "    Info: Klabsch algorithm on unique element types found a better match with a Score of {0}".format(current_score)
@@ -558,7 +579,7 @@ and
             'array': current_match.tolist(),
             'score': current_score,
             'reference_array': point_arrays[SECOND_STRUCTURE],
-            'transform': current_matrixes,
+            'transform': current_transform,
         }
 
 def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
@@ -567,11 +588,15 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
         point_lists,
     )
 
-    P, Q = point_arrays
-    U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
-    kabsched_list1 = np.dot(point_arrays[FIRST_STRUCTURE] - Pc, U) + Qc
+    transform = transform_mapping(*point_arrays)
+    kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
 
-    current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[FIRST_STRUCTURE], silent=silent)
+    current_match = kabsched_list1
+    current_score = distance_array_function(
+        kabsched_list1,
+        point_arrays[FIRST_STRUCTURE],
+        silent=silent,
+    )
 
     if not silent:
         print "    Info: Minimum Score from lucky Kabsch method is: {0}".format(current_score)
@@ -598,17 +623,23 @@ def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_a
             lambda index: point_arrays[FIRST_STRUCTURE][index, 0:3],
             permutation,
         )
-        P, Q = unique_points
-        U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
-        kabsched_list1 = np.dot(point_arrays[FIRST_STRUCTURE] - Pc, U) + Qc
+        transform = transform_mapping(*unique_points)
+        kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
 
-        current_match, current_score = kabsched_list1, distance_array_function(kabsched_list1, point_arrays[SECOND_STRUCTURE], silent=silent)
+        current_match = kabsched_list1
+        current_score = distance_array_function(
+            kabsched_list1,
+            point_arrays[SECOND_STRUCTURE],
+            silent=silent,
+        )
 
-        current_score = distance_array_function(kabsched_list1, point_arrays[SECOND_STRUCTURE], silent=silent)
         if (not best_score) or current_score <= best_score:
             best_match, best_score = kabsched_list1, current_score
             if not silent:
-                print "    Info: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(best_score=best_score, N=N_BRUTEFORCE_KABSCH)
+                print "    Info: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(
+                    best_score=best_score,
+                    N=N_BRUTEFORCE_KABSCH,
+                )
 
     if not silent:
         print "    Info: Minimum Score from bruteforce Kabsch method is: {0}".format(best_score)

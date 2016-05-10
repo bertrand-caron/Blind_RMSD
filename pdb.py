@@ -41,7 +41,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
         alignment = FAILED_ALIGNMENT
         if io:
             print >> io, '<pre>{0}</pre>'.format(e)
-        if not soft_fail or True:
+        if not soft_fail:
             raise
 
     if alignment.aligned_points is None: # pragma: no cover

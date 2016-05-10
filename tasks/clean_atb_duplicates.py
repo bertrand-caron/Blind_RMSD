@@ -17,6 +17,7 @@ from Blind_RMSD.align import pointsOnPoints
 from Blind_RMSD.helpers.scoring import rmsd, ad
 from API_client.api import API
 from Blind_RMSD.helpers.moldata import group_by, split_equivalence_group, point_list, flavour_list, element_list, pdb_str
+from Blind_RMSD.pdb import pdb_data_for, align_pdb_on_pdb
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd
@@ -147,77 +148,64 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
     pymol_files = []
 
     for i, mol1 in enumerate(molecules):
-        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='yml')) as fh: data1 = load(fh.read())
-        atoms1 = data1['atoms'].items()
-
-        point_list1 = point_list(data1, UNITED)
-        flavour_list1 = flavour_list(data1, UNITED)
-        element_list1 = element_list(data1, UNITED)
-        pdb_lines1 = pdb_str(data1, UNITED)
-        m1 = pmx.Model(pdbline=pdb_lines1)
-        extra_points1 = deepcopy(point_list1)
+        with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=i, extension='pdb_aa')) as fh:
+            data1 = pdb_data_for(fh.read())
 
         for j, mol2 in enumerate(molecules):
-            if j >= i: continue
-            aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(i, j), extension='pdb')
-            if exists(aligned_pdb_file) and not OVERWRITE_RESULTS: continue
-
-            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='yml')) as fh: data2 = load(fh.read())
-            atoms2 = data2['atoms'].items()
-            point_list2 = point_list(data2, UNITED)
-            point_lists = [point_list1, point_list2]
-
-            flavour_list2 = flavour_list(data2, UNITED)
-            element_list2 = element_list(data2, UNITED)
-
-            flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
-
-            # This will throw errors outside of the try block in debug mode
-            if debug:
-                aligned_point_list1, best_score, extra_points, final_permutation = pointsOnPoints(
-                    deepcopy(point_lists),
-                    silent=silent,
-                    use_AD=False,
-                    element_lists=element_lists,
-                    flavour_lists=flavour_lists,
-                    show_graph=SHOW_GRAPH,
-                    score_tolerance=expected_rmsd,
-                    extra_points=extra_points1,
-                )
-                print aligned_point_list1
-                print extra_points
-                exit()
-            try:
-                aligned_point_list1, best_score, extra_points, final_permutation = pointsOnPoints(
-                    deepcopy(point_lists),
-                    silent=silent,
-                    use_AD=False,
-                    element_lists=element_lists,
-                    flavour_lists=flavour_lists,
-                    show_graph=SHOW_GRAPH,
-                    score_tolerance=expected_rmsd,
-                    extra_points=extra_points1,
-                )
-            except Exception, e:
-                print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
-                ERROR_LOG.write('ERROR: InChI={inchi}, molids={molids}, msg="{msg}"\n'.format(inchi=mol1.inchi, msg=e, molids=[mol1.molid, mol2.molid]))
+            if j >= i:
                 continue
 
-            matrix[i, j] = best_score
-            print best_score
-            if best_score <= DELETION_THRESHOLD:
+            aligned_pdb_file = FILE_TEMPLATE.format(molecule_name=molecule_name, version="{0}_aligned_on_{1}".format(i, j), extension='pdb')
+            if exists(aligned_pdb_file) and not OVERWRITE_RESULTS:
+                continue
+
+            with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='pdb_aa')) as fh:
+                data2 = pdb_data_for(fh.read())
+
+            aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2)
+
+            try:
+                aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2)
+            except Exception, e:
+                print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
+                ERROR_LOG.write(
+                    'ERROR: InChI={inchi}, molids={molids}, msg="{msg}"\n'.format(
+                        inchi=mol1.inchi,
+                        msg=e,
+                        molids=[mol1.molid, mol2.molid],
+                    ),
+                )
+
+                if debug:
+                    # This will throw errors outside of the try block in debug mode
+                    raise e
+                else:
+                    continue
+
+            matrix[i, j] = alignment_score
+            print alignment_score
+            if alignment_score <= DELETION_THRESHOLD:
                 if not mol1 in to_delete_molecules:
                     to_delete_molecules.append(mol1)
-                    if best_score <= TINY_RMSD_SHOULD_DELETE and mol1 not in to_delete_NOW_molecules: to_delete_NOW_molecules.append(mol1)
+
+                    if alignment_score <= TINY_RMSD_SHOULD_DELETE and mol1 not in to_delete_NOW_molecules:
+                        to_delete_NOW_molecules.append(mol1)
+
                     pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(i, j), extension='pdb'))
                     pymol_files.append(FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}'.format(j), extension='pdb'))
 
-            for index, atom in enumerate(m1.atoms):
-                atom.x = aligned_point_list1[index]
-            m1.write(aligned_pdb_file)
-        if ONLY_DO_ONE_ROW: break
-    if not exists(matrix_log_file): numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
-    print 'Debug these results by running: "pymol {0} {1}"'.format(FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'), FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'))
+            with open(aligned_pdb_file, 'w') as fh:
+                fh.write(aligned_pdb_str)
+        if ONLY_DO_ONE_ROW:
+            break
+
+    if not exists(matrix_log_file):
+        numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
+
+    print 'Debug these results by running: "pymol {0} {1}"'.format(
+        FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'),
+        FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'),
+    )
     print matrix
     print 'View these results online at URL: {0}'.format(
         join(
@@ -280,7 +268,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=5, min_n_atoms=0)
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=1, min_n_atoms=0)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

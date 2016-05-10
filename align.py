@@ -186,7 +186,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         method_results.items(),
         key=lambda x:x[1]['score'] if 'score' in x[1] else 100.,
     )[0][0]
-    best_match = method_results[best_method]['array']
+    best_match, best_score = method_results[best_method]['array'], method_results[best_method]['score']
 
     if has_extra_points:
         U, Pc, Qc = method_results[best_method]['transform']

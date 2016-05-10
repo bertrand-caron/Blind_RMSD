@@ -14,10 +14,11 @@ import numpy
 numpy.set_printoptions(precision=3, linewidth=300)
 
 from Blind_RMSD.align import pointsOnPoints
-from Blind_RMSD.helpers.scoring import rmsd, ad
+from Blind_RMSD.helpers.scoring import rmsd, ad, INFINITE_RMSD
 from API_client.api import API
 from Blind_RMSD.helpers.moldata import group_by, split_equivalence_group, point_list, flavour_list, element_list, pdb_str
 from Blind_RMSD.pdb import pdb_data_for, align_pdb_on_pdb
+from Blind_RMSD.helpers.exceptions import Topology_Error
 
 numerical_tolerance = 1e-5
 scoring_function = rmsd
@@ -40,6 +41,8 @@ ERROR_LOG_FILE = 'log.err'
 ERROR_LOG = open(ERROR_LOG_FILE, 'w')
 
 UNITED = True
+
+faulty_inchis = []
 
 def download_molecule_files(molecule_name, inchi):
     def sorted_mols_for_InChI(inchi):
@@ -162,15 +165,18 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='pdb_aa')) as fh:
                 data2 = pdb_data_for(fh.read())
 
-            aligned_pdb_str, alignment_score = align_pdb_on_pdb(
-                reference_pdb_data=data1,
-                other_pdb_data=data2,
-                soft_fail=False,
-                silent=True,
-            )
-
             try:
-                aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2)
+                aligned_pdb_str, alignment_score = align_pdb_on_pdb(
+                    reference_pdb_data=data1,
+                    other_pdb_data=data2,
+                    soft_fail=False,
+                    silent=True,
+                )
+                assert alignment_score is not INFINITE_RMSD
+            except Topology_Error:
+                print 'WARNING: Faulty inchi: {0}'.format(mol1.inchi)
+                faulty_inchis.append(mol1.inchi)
+                continue
             except Exception, e:
                 print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
                 ERROR_LOG.write(
@@ -183,7 +189,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
 
                 if debug:
                     # This will throw errors outside of the try block in debug mode
-                    raise e
+                    raise
                 else:
                     continue
 
@@ -273,7 +279,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=100, min_n_atoms=5)
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=100, min_n_atoms=13)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)
@@ -296,6 +302,9 @@ if __name__ == "__main__":
             no_delete=args.nodelete,
             max_matrix_size=args.max_matrix_size,
         )
+
+    print 'Faulty inchis'
+    print set(faulty_inchis)
 
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

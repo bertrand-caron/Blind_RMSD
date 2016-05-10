@@ -3,8 +3,14 @@ from Blind_RMSD.helpers.moldata import group_by
 
 BYPASS_SILENT = False
 
-def do_assert(something, error_msg):
-    assert something, error_msg
+def do_assert(something, error_msg, exception_type=None):
+    try:
+        assert something, error_msg
+    except:
+        if exception_type is None:
+            raise
+        else:
+            raise exception_type()
 
 def assert_array_equal(array1, array2, message="{0} and {1} are different", rtol=1e-5):
     assert np.allclose( array1, array2, rtol=rtol), message.format(array1, array2)

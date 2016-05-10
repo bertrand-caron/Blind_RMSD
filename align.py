@@ -12,6 +12,7 @@ from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
 from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
 from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array
+from Blind_RMSD.helpers.exceptions import Topology_Error
 
 from Blind_RMSD.lib.charnley_rmsd import kabsch
 
@@ -92,6 +93,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         do_assert(
             sorted(flavour_lists[FIRST_STRUCTURE]) == sorted(flavour_lists[SECOND_STRUCTURE]),
             "Error: There is not a one to one mapping between the sorted elements of the flavour sets: {0} and {1}".format(*map(sorted, flavour_lists)),
+            exception_type=Topology_Error,
         )
     if has_elements:
         do_assert(

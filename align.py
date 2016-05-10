@@ -274,7 +274,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
             min_dist, min_index = None, None
             for j in range(dim[0]):
                 distance = masked_rmsd_array[i,j]
-                min_dist = min(min_dist, distance) if min_dist else distance
+                min_dist = min(min_dist, distance) if min_dist is not None else distance
                 if distance == min_dist: min_index = j
             perm_list.append((i, min_index))
 

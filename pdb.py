@@ -19,7 +19,7 @@ def pdb_data_for(pdb_str):
         extra_points_lists = united_hydrogens_point_list(data, UNITED_RMSD_FIT),
     )
 
-def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None):
+def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, silent=True):
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
         reference_pdb_data = pdb_data_for(reference_pdb_str)
@@ -30,11 +30,12 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
 
     try:
         alignment = pointsOnPoints(
-            (other_pdb_data.point_lists, reference_pdb_data.point_lists),
-            element_lists=(other_pdb_data.element_lists, reference_pdb_data.element_lists),
-            flavour_lists=(other_pdb_data.flavour_lists, reference_pdb_data.flavour_lists),
+            [other_pdb_data.point_lists, reference_pdb_data.point_lists],
+            element_lists=[other_pdb_data.element_lists, reference_pdb_data.element_lists],
+            flavour_lists=[other_pdb_data.flavour_lists, reference_pdb_data.flavour_lists],
             soft_fail=True,
             extra_points=other_pdb_data.extra_points_lists,
+            silent=silent,
         )
     except Exception, e:
         alignment = FAILED_ALIGNMENT
@@ -44,9 +45,11 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
         if io:
             #print >> io, '<p>Aligment Failed for PDB {0}.</p>'.format(i+1)
             print >> io, '<pre>{0}</pre>'.format(alignment)
-        raise Exception('Alignment failed.')
+        final_aligned_pdb_str = (other_pdb_str if other_pdb_str else '')
     else:
-        return (
-            aligned_pdb_str(other_pdb_data.data, alignment, UNITED_RMSD_FIT),
-            alignment.score,
-        )
+        final_aligned_pdb_str = aligned_pdb_str(other_pdb_data.data, alignment, UNITED_RMSD_FIT)
+
+    return (
+        final_aligned_pdb_str,
+        alignment.score,
+    )

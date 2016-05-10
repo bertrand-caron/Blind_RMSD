@@ -22,7 +22,7 @@ from Blind_RMSD.pdb import pdb_data_for, align_pdb_on_pdb
 numerical_tolerance = 1e-5
 scoring_function = rmsd
 
-FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}{version}.{extension}"
+FILE_TEMPLATE = "testing/{molecule_name}/{molecule_name}_{version}.{extension}"
 
 API_TOKEN = 'E1A54AB5008F1E772EBC3A51BAEE98BF'
 ATB_HOST = 'https://atb.uq.edu.au'
@@ -162,7 +162,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='pdb_aa')) as fh:
                 data2 = pdb_data_for(fh.read())
 
-            aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2)
+            aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2, silent=True)
 
             try:
                 aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2)
@@ -268,7 +268,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=1, min_n_atoms=0)
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=10, min_n_atoms=5)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

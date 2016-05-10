@@ -19,7 +19,7 @@ def pdb_data_for(pdb_str):
         extra_points_lists = united_hydrogens_point_list(data, UNITED_RMSD_FIT),
     )
 
-def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, silent=True):
+def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, silent=True, soft_fail=True):
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
         reference_pdb_data = pdb_data_for(reference_pdb_str)
@@ -33,14 +33,17 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             [other_pdb_data.point_lists, reference_pdb_data.point_lists],
             element_lists=[other_pdb_data.element_lists, reference_pdb_data.element_lists],
             flavour_lists=[other_pdb_data.flavour_lists, reference_pdb_data.flavour_lists],
-            soft_fail=True,
             extra_points=other_pdb_data.extra_points_lists,
             silent=silent,
+            soft_fail=soft_fail,
         )
     except Exception, e:
         alignment = FAILED_ALIGNMENT
         if io:
             print >> io, '<pre>{0}</pre>'.format(e)
+        if not soft_fail:
+            raise
+
     if alignment.aligned_points is None: # pragma: no cover
         if io:
             #print >> io, '<p>Aligment Failed for PDB {0}.</p>'.format(i+1)

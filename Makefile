@@ -10,6 +10,10 @@ clean_atb_duplicates: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	$(PYTHON_EXEC) tasks/$@.py --auto --nodelete --debug #| tee log.out
 .PHONY: clean_atb_duplicates
 
+test: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
+	$(PYTHON_EXEC) test.py
+.PHONY: test
+
 test-pymol: test
 	pymol -M testing/ethanol/*.pdb
 

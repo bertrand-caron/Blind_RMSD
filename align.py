@@ -5,12 +5,14 @@ from functools import partial
 from copy import deepcopy
 from pprint import PrettyPrinter
 from collections import namedtuple
+from scipy.spatial.distance import pdist as distance_matrix
 
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
-from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_distance_matrix
+from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_distance_matrix, NULL_RMSD, INFINITE_RMSD
+from Blind_RMSD.helpers.assertions import do_assert
 
 from Blind_RMSD.lib.charnley_rmsd import kabsch
 
@@ -41,15 +43,9 @@ UNTIL_SECOND_STRUCTURE = SECOND_STRUCTURE + 1
 EXTRA_POINTS = 2
 ON_BOTH_LISTS = [FIRST_STRUCTURE, SECOND_STRUCTURE]
 
-NULL_RMSD = 0.0
-INFINITE_RMSD = float('inf')
-
 Alignment = namedtuple('Alignment', 'aligned_points, score , extra_points, final_permutation')
 
 FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
-
-def do_assert(something, error_msg):
-    assert something, error_msg
 
 def transform_mapping(point_array_1, point_array_2):
     P, Q = point_array_1, point_array_2
@@ -65,6 +61,12 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     # Initializers
     has_elements = True if element_lists and all(element_lists) else False
     has_flavours = True if flavour_lists and all(flavour_lists) else False
+
+    if not silent:
+        print 'INFO: {0}'.format(
+            dict(has_elements=has_elements, has_flavours=has_flavours),
+        )
+
     if not has_flavours:
         flavour_lists = map(
             lambda a_list: range(len(a_list)),
@@ -140,8 +142,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
                 mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else float('inf')
                 dumb_array[i, j] = "{0} {1}".format(chemical_point0.canonical_rep, chemical_point1.canonical_rep)
         if not silent:
+            print 'INFO: chemical_points_lists:'
             print chemical_points_lists
         if not silent:
+            print 'INFO: dumb_array:'
             print dumb_array
 
     distance_function, distance_array_function = rmsd if not use_AD else ad, lambda *args, **kwargs: rmsd_array_for_loop(*args, mask_array=mask_array if mask_array is not None else None, **kwargs) if not use_AD else ad_array
@@ -168,7 +172,12 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         )
 
     # Break now if there are no rotational component
-    if distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]) <= score_tolerance and ALLOW_SHORTCUTS:
+    current_rmsd = distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE])
+
+    if not silent:
+        print 'INFO: {0}'.format(dict(current_rmsd=current_rmsd))
+
+    if current_rmsd <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         assert_found_permutation_array(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], silent=silent)
 
@@ -212,7 +221,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     # Try the flavoured Kabsch method if we have elements
     if has_elements:
-        method_results['kabsch'] = flavoured_kabsch_method(
+        method_results['flavoured_kabsch'] = flavoured_kabsch_method(
             point_lists,
             element_lists,
             flavour_lists=flavour_lists,
@@ -240,8 +249,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         else:
             return FAILED_ALIGNMENT
 
-    if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
-    if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
+    if not silent:
+        print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
+    if not silent:
+        print "Info: Best score was achieved with method: {0}".format(best_method)
 
     def corrected(points_array):
         return points_array - center_of_geometry(best_match) + center_of_geometries[SECOND_STRUCTURE]
@@ -382,6 +393,10 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         point_lists,
     )
     has_flavours= bool(flavour_lists)
+
+    if not silent:
+        print '    INFO: {0}'.format(dict(has_flavours=has_flavours))
+
     MIN_N_UNIQUE_POINTS = DEFAULT_MIN_N_UNIQUE_POINTS if len(point_lists[0]) >= DEFAULT_MIN_N_UNIQUE_POINTS else 3
 
     if not silent:

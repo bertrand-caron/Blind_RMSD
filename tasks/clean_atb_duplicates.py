@@ -162,7 +162,12 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             with open(FILE_TEMPLATE.format(molecule_name=molecule_name, version=j, extension='pdb_aa')) as fh:
                 data2 = pdb_data_for(fh.read())
 
-            aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2, silent=True)
+            aligned_pdb_str, alignment_score = align_pdb_on_pdb(
+                reference_pdb_data=data1,
+                other_pdb_data=data2,
+                soft_fail=False,
+                silent=True,
+            )
 
             try:
                 aligned_pdb_str, alignment_score = align_pdb_on_pdb(reference_pdb_data=data1, other_pdb_data=data2)

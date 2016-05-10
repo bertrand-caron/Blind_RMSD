@@ -301,7 +301,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         assert_array_equal(
             distance_matrix(complete_molecule_after),
             distance_matrix(complete_molecule_before),
-            rtol=0.2, # Because of the rotation, the coordinates get truncated quite a bit
+            rtol=0.3, # Because of the rotation, the coordinates get truncated quite a bit
         )
     else:
         corrected_extra_points = None
@@ -314,6 +314,8 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     final_permutation = assert_found_permutation_array(
         corrected_best_match,
         point_arrays[SECOND_STRUCTURE],
+        flavour_lists=flavour_lists,
+        element_lists=element_lists,
         mask_array=mask_array if mask_array is not None else None,
         silent=silent,
     )

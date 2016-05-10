@@ -25,7 +25,7 @@ on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(
 DEFAULT_MIN_N_UNIQUE_POINTS = 5
 MAX_N_COMPLEXITY = 10 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
-ALLOW_SHORTCUTS = True
+ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
 
 DISABLE_BRUTEFORCE_METHOD = True
@@ -45,6 +45,8 @@ Alignment = namedtuple('Alignment', 'aligned_points, score , extra_points, final
 FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
 
 def transform_mapping(point_array_1, point_array_2):
+    assert len(point_array_1) == len(point_array_2)
+
     P, Q = point_array_1, point_array_2
     U, Pc, Qc = rotation_matrix_kabsch_on_points(P, Q)
     transform = lambda point_array: np.dot(point_array - Pc, U) + Qc
@@ -152,7 +154,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         (a_point_array - a_center_of_geometry)
         for a_point_array, a_center_of_geometry in zip(
             point_arrays,
-            center_of_geometries[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE] + [center_of_geometries[FIRST_STRUCTURE]],
+            center_of_geometries[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE] + ([center_of_geometries[FIRST_STRUCTURE]] if has_extra_points else []),
         )
     ]
 
@@ -272,9 +274,21 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
         # Make sure the correction has not distorted the inter-distances between EXTRA_POINTS and FIRST_STRUCTURE
         if not soft_fail:
+            if not silent:
+                print extra_points
+                print
+                print corrected_extra_points
+                print
+                print corrected_extra_points - extra_points
+                print
+                print center_of_geometry(best_match)
+
+            complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
+            complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
+
             assert_array_equal(
-                distance_matrix(np.concatenate((corrected_best_match, corrected_extra_points))),
-                distance_matrix(np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))),
+                distance_matrix(complete_molecule_after),
+                distance_matrix(complete_molecule_before),
             )
     else:
         corrected_extra_points = None
@@ -290,15 +304,6 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         mask_array=mask_array if mask_array is not None else None,
         silent=silent,
     )
-
-    if not silent:
-        print extra_points
-        print
-        print corrected_extra_points
-        print
-        print corrected_extra_points - extra_points
-        print
-        print center_of_geometry(best_match)
 
     return Alignment(
         corrected_best_match.tolist(),
@@ -392,7 +397,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         print "    Info: Found element types. Trying flavoured {0}-point Kabsch algorithm on flavoured elements types ...".format(MIN_N_UNIQUE_POINTS)
 
     grouped_flavours_lists = map(
-        lambda index:group_by(flavour_lists[index], lambda x:x ),
+        lambda index: group_by(flavour_lists[index], lambda x:x ),
         ON_BOTH_LISTS,
     )
     chemical_points_lists = get_chemical_points_lists(
@@ -404,7 +409,7 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
     )
 
     grouped_chemical_points_lists = map(
-        lambda chemical_points:group_by(chemical_points, on_canonical_rep),
+        lambda chemical_points: group_by(chemical_points, on_canonical_rep),
         chemical_points_lists,
     )
     # Try to find MIN_N_UNIQUE_POINTS unique elements type points
@@ -412,9 +417,13 @@ def flavoured_kabsch_method(point_lists, element_lists, silent=True, distance_ar
         lambda grouped_chemical_points: [group[0] for group in grouped_chemical_points.values() if len(group) == 1],
         grouped_chemical_points_lists,
     )
-    # Order them by decreasing element type
+    # Order them by (decreasing element type, canonical_rep)
     unique_points_lists = map(
-        lambda index: sorted(unique_points_lists[index], key=lambda x: ELEMENT_NUMBERS[ x.element.upper() ], reverse=True),
+        lambda index: sorted(
+            unique_points_lists[index],
+            key=lambda x: (ELEMENT_NUMBERS[x.element.upper()], x.canonical_rep),
+            reverse=True,
+        ),
         ON_BOTH_LISTS,
     )
 
@@ -585,6 +594,14 @@ and
             "Error: Unique points have not been ordered properly: {0} and {1}".format(map(on_elements, unique_points_lists[0][0:MIN_N_UNIQUE_POINTS]), map(on_elements, unique_points_lists[1][0:MIN_N_UNIQUE_POINTS])),
         )
 
+        do_assert(
+            map(on_canonical_rep, unique_points_lists[FIRST_STRUCTURE]) == map(on_canonical_rep, unique_points_lists[SECOND_STRUCTURE]),
+            'Error: Canonical representation of unique points do not match: {0} != {1}'.format(
+                map(on_canonical_rep, unique_points_lists[FIRST_STRUCTURE]),
+                map(on_canonical_rep, unique_points_lists[SECOND_STRUCTURE]),
+            ),
+        )
+
         # Align those MIN_N_UNIQUE_POINTS points using Kabsch algorithm
         current_transform = transform_mapping(
             map(on_coords, unique_points_lists[FIRST_STRUCTURE]),
@@ -599,6 +616,9 @@ and
 #                    (point_arrays[SECOND_STRUCTURE], "P2"),
 #                ],
 #            )
+
+        if not silent:
+            print kabsched_list1, point_arrays[SECOND_STRUCTURE]
 
         current_match = kabsched_list1
         current_score= distance_array_function(

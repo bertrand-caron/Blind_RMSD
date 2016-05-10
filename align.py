@@ -1,5 +1,4 @@
-import numpy as np
-np.set_printoptions(precision=1, linewidth=300)
+from Blind_RMSD.helpers.numpy_helpers import *
 from itertools import product, groupby, permutations
 from functools import partial
 from copy import deepcopy
@@ -11,8 +10,8 @@ from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
-from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, get_distance_matrix, NULL_RMSD, INFINITE_RMSD
-from Blind_RMSD.helpers.assertions import do_assert
+from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
+from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array
 
 from Blind_RMSD.lib.charnley_rmsd import kabsch
 
@@ -26,12 +25,10 @@ on_second_element_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(
 DEFAULT_MIN_N_UNIQUE_POINTS = 5
 MAX_N_COMPLEXITY = 10 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
 
-ALLOW_SHORTCUTS = False
+ALLOW_SHORTCUTS = True
 DEFAULT_SCORE_TOLERANCE = 0.01
 
 DISABLE_BRUTEFORCE_METHOD = True
-
-BYPASS_SILENT = False
 
 ORIGIN, ZERO_VECTOR = np.array([0.,0.,0.]), np.array([0.,0.,0.])
 
@@ -179,7 +176,13 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     if current_rmsd <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
-        assert_found_permutation_array(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], silent=silent)
+        assert_found_permutation_array(*
+            centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE],
+            element_lists=element_lists,
+            flavour_lists=flavour_lists,
+            mask_array=mask_array,
+            silent=silent
+        )
 
         def center_on_second_structure(point_array):
             return point_array + center_of_geometries[SECOND_STRUCTURE]
@@ -261,60 +264,25 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         print "Info: Best score was achieved with method: {0}".format(best_method)
 
     def corrected(points_array):
-        return points_array - center_of_geometries[SECOND_STRUCTURE]
-        #return points_array - center_of_geometry(best_match) + center_of_geometries[SECOND_STRUCTURE]
+        return points_array - center_of_geometry(best_match) + center_of_geometries[SECOND_STRUCTURE]
 
-    corrected_best_match = corrected(best_match)
+    corrected_best_match = corrected(best_match)# + center_of_geometry(best_match)
     if has_extra_points:
-        corrected_extra_points = corrected(aligned_extra_points_array)
-        # Make sure the correction has not distorted the inter-distances between extra_points
-        assert_array_equal(
-            distance_matrix(corrected_extra_points),
-            distance_matrix(extra_points),
-        )
+        corrected_extra_points = corrected(aligned_extra_points_array) + center_of_geometry(best_match)
+
+        # Make sure the correction has not distorted the inter-distances between EXTRA_POINTS and FIRST_STRUCTURE
+        if not soft_fail:
+            assert_array_equal(
+                distance_matrix(np.concatenate((corrected_best_match, corrected_extra_points))),
+                distance_matrix(np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))),
+            )
     else:
         corrected_extra_points = None
 
-    assert_array_equal(*map(center_of_geometry, [corrected_best_match, point_arrays[SECOND_STRUCTURE]]), message="{0} != {1}")
-
-    def assert_found_permutation_array(array1, array2, mask_array=None, silent=True, hard_fail=False):
-        perm_list = []
-        masked_rmsd_array = get_distance_matrix(array1, array2) + mask_array
-        dim = masked_rmsd_array.shape
-        assert dim[0] == dim[1]
-        for i in range(dim[0]):
-            min_dist, min_index = None, None
-            for j in range(dim[0]):
-                distance = masked_rmsd_array[i,j]
-                min_dist = min(min_dist, distance) if min_dist is not None else distance
-                if distance == min_dist: min_index = j
-            perm_list.append((i, min_index))
-
-        offending_indexes = [ (value, map(lambda x: x[0], group)) for value, group in group_by(perm_list, lambda x:x[1]).items() if len(group) >= 2]
-        misdefined_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
-
-        if not silent:
-            print zip(misdefined_indexes, map(lambda x: (element_lists[SECOND_STRUCTURE][x], flavour_lists[SECOND_STRUCTURE][x]), misdefined_indexes))
-
-        # Assert that perm_list is a permutation, i.e. that every obj of the first list is assigned one and only once to an object of the second list
-        if hard_fail:
-            do_assert(
-                sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]),
-                "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0])),
-            )
-            if not silent:
-                print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
-        else:
-            if not sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]):
-                if not silent or BYPASS_SILENT:
-                    print "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0]))
-                    print "Error: Troublesome indexes are {0}".format(misdefined_indexes)
-                final_permutation = None
-            else:
-                if not silent or BYPASS_SILENT:
-                    print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
-                final_permutation = perm_list
-        return final_permutation
+    assert_array_equal(*
+        map(center_of_geometry, [corrected_best_match, point_arrays[SECOND_STRUCTURE]]),
+        message="{0} != {1}"
+    )
 
     final_permutation = assert_found_permutation_array(
         corrected_best_match,
@@ -325,8 +293,11 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     if not silent:
         print extra_points
+        print
         print corrected_extra_points
+        print
         print corrected_extra_points - extra_points
+        print
         print center_of_geometry(best_match)
 
     return Alignment(
@@ -716,9 +687,6 @@ def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_a
 #################
 #### HELPERS ####
 #################
-
-def assert_array_equal(array1, array2, message="{0} and {1} are different"):
-    assert np.allclose( array1, array2, atol=1e-5), message.format(array1, array2)
 
 def rotation_matrix_kabsch_on_points(points1, points2):
     # Align those points using Kabsch algorithm

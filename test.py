@@ -1,7 +1,7 @@
 from Blind_RMSD.pdb import pdb_data_for, align_pdb_on_pdb
 
 def pdb_str(test_ID):
-    with open('data/1.pdb') as fh:
+    with open('data/{0}.pdb'.format(test_ID)) as fh:
         return fh.read()
 
 if __name__ == '__main__':
@@ -10,8 +10,10 @@ if __name__ == '__main__':
         reference_pdb_str=pdb_data[0],
         other_pdb_str=pdb_data[1],
         silent=False,
-        soft_fail=True,
+        soft_fail=False,
     )
 
     with open('data/2_on_1.pdb', 'w') as fh:
         fh.write(aligned_pdb)
+
+    print alignment_score

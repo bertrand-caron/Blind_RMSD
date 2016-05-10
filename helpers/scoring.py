@@ -1,9 +1,5 @@
-from numpy import sqrt, mean, square
-from scipy.spatial.distance import cdist
-import numpy as np
-np.set_printoptions(precision=1, linewidth=300)
-
 from Blind_RMSD.helpers.assertions import do_assert
+from Blind_RMSD.helpers.numpy_helpers import *
 
 NULL_RMSD = 0.0
 INFINITE_RMSD = float('inf')
@@ -98,9 +94,6 @@ def ad_array(point_array1, point_array2, mask_array=None, silent=True):
     ad = max( np.min( distance_matrix, axis=0 ) )
     if not silent: print "    Info: New AD: {0}".format(ad)
     return ad
-
-def get_distance_matrix(x, y):
-    return cdist(x, y, metric='euclidean')
 
 # Return how many point of list1 are within 0.1 Angstrom to another point of list2
 # Throws an error if several points are considered in contact to the same one

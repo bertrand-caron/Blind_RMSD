@@ -1,25 +1,34 @@
-install: Vector.py charnley_rmsd/kabsch.py pmx testing
+PYTHONPATH = PYTHONPATH="/home/$$USER/ATB:/home/$$USER/ATB-Dependencies"
+
+PYTHON_EXEC = $(PYTHONPATH) python
+
+install: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	echo 'Installed'
 
-test: Vector.py charnley_rmsd/kabsch.py pmx testing
+clean_atb_duplicates: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	make clean
-	python test_rmsd.py --auto | tee log.out
+	$(PYTHON_EXEC) tasks/$@.py --auto --nodelete --debug #| tee log.out
+.PHONY: clean_atb_duplicates
+
+test: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
+	$(PYTHON_EXEC) test.py
+.PHONY: test
 
 test-pymol: test
 	pymol -M testing/ethanol/*.pdb
 
-Vector.py: biopython
-	ln -s biopython/Bio/PDB/$@ $@
+helpers/Vector.py: lib/biopython
+	ln -s ../$</Bio/PDB/Vector.py $@
 	touch $@
 
-biopython:
-	git clone https://github.com/bertrand-caron/biopython.git
+lib/biopython:
+	cd lib && git clone https://github.com/bertrand-caron/biopython.git
 
-charnley_rmsd/kabsch.py: charnley_rmsd
+lib/charnley_rmsd/kabsch.py: lib/charnley_rmsd
 	if [[ -e $@ ]]; then unlink $@; fi
 	ln -s calculate_rmsd $@
 
-charnley_rmsd:
+lib/charnley_rmsd:
 	git clone https://github.com/charnley/rmsd.git $@
 	touch $@/__init__.py
 
@@ -33,3 +42,7 @@ pmx:
 clean:
 	rm -rf testing/*
 .PHONY: clean
+
+errors:
+	$(PYTHONPATH) pylint -E *.py helpers/*.py tasks/*.py
+.PHONY: errors

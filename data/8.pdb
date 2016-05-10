@@ -1,0 +1,22 @@
+HEADER    UNCLASSIFIED                            05-Apr-16
+TITLE     ALL ATOM STRUCTURE FOR MOLECULE DCE                                   
+AUTHOR    GROMOS AUTOMATIC TOPOLOGY BUILDER REVISION 2016-03-31 14:08:37
+AUTHOR   2  http://compbio.biosci.uq.edu.au/atb
+HETATM    1  2H1 X7MQ    0       0.385   1.199   0.894  1.00  0.00           H
+HETATM    2   C1 X7MQ    0       0.486   0.583  -0.000  1.00  0.00           C
+HETATM    3  CL1 X7MQ    0       2.188  -0.073  -0.000  1.00  0.00          Cl
+HETATM    4  1H1 X7MQ    0       0.385   1.199  -0.894  1.00  0.00           H
+HETATM    5   C2 X7MQ    0      -0.486  -0.582   0.000  1.00  0.00           C
+HETATM    6  CL2 X7MQ    0      -2.188   0.073  -0.000  1.00  0.00          Cl
+HETATM    7  1H2 X7MQ    0      -0.385  -1.199  -0.894  1.00  0.00           H
+HETATM    8  2H2 X7MQ    0      -0.385  -1.199   0.893  1.00  0.00           H
+CONECT    1    2
+CONECT    2    1    3    4    5
+CONECT    3    2
+CONECT    4    2
+CONECT    5    2    6    7    8
+CONECT    6    5
+CONECT    7    5
+CONECT    8    5
+END
+

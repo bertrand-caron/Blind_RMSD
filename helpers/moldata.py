@@ -1,5 +1,3 @@
-from config.paths import load_atb_paths
-load_atb_paths()
 from atb_helpers.pdb import substitute_coordinates_in
 from atb_helpers.iterables import group_by
 
@@ -41,6 +39,9 @@ def element_list(data, united=False):
 def pdb_lines(data, united=False):
     return [atom['pdb'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
 
+def connect_lines(data):
+    return ['CONECT{0:5d}{1:5d}'.format(*bond['atoms']) for bond in data['bonds']]
+
 def pdb_str(data, united=False):
     return '\n'.join(pdb_lines(data, united))
 
@@ -56,25 +57,43 @@ def united_hydrogens_point_list(data, united=False):
 def united_hydrogens_pdb_lines(data, united=False):
     return [ atom['pdb'] for _, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
 
+def permutated_list(a_list, permutation):
+    on_j = lambda x:x[1]
+
+    new_list = []
+    assert len(a_list) == len(permutation), '{0} != {1}'.format(a_list, permutation)
+    for (i,j) in sorted(permutation, key=on_j):
+        new_list.append(a_list[i])
+    return new_list
+
 def aligned_pdb_str(data, alignment, united=False):
     from StringIO import StringIO
     pdb_str = StringIO()
 
-    atom_count = 0
-    for line in pdb_lines(data, united):
-        fields = line.split()
-        if len(fields) != 11: print >> pdb_str, line
-        else:
-            print >> pdb_str, substitute_coordinates_in(line, alignment[0][atom_count])
-            atom_count += 1
+    alignment_coordinates, _, united_H_coordinates, final_permutation = alignment
+    heavy_atoms_pdb_lines = pdb_lines(data, united)
+
+    if final_permutation:
+        heavy_atoms_pdb_lines, alignment_coordinates = map(
+            lambda a_list: permutated_list(a_list, final_permutation),
+            (heavy_atoms_pdb_lines, alignment_coordinates),
+        )
+
+    assert len(heavy_atoms_pdb_lines) == len(alignment_coordinates)
+    for line, coordinates in zip(heavy_atoms_pdb_lines, alignment_coordinates):
+        print >> pdb_str, substitute_coordinates_in(line, coordinates)
 
     atom_count = 0
     for line in united_hydrogens_pdb_lines(data, united):
         fields = line.split()
-        if len(fields) != 11: print >> pdb_str, line
+        if len(fields) != 11:
+            print >> pdb_str, line
         else:
-            print >> pdb_str, substitute_coordinates_in(line, alignment[2][atom_count])
+            print >> pdb_str, substitute_coordinates_in(line, united_H_coordinates[atom_count])
             atom_count += 1
+
+    for connect_line in connect_lines(data):
+        print >> pdb_str, connect_line
 
     return pdb_str.getvalue()
 

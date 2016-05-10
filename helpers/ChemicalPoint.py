@@ -7,23 +7,35 @@ on_canonical_rep = lambda chemical_point: chemical_point.canonical_rep
 
 
 class ChemicalPoint:
-    
     def __init__(self, x, index, element=None, flavour=None, grouped_flavours=None):
         self.x = x
         self.index = index
         self.element = element
         self.flavour = flavour
         self.canonical_rep = element if not grouped_flavours else '{element}{flavour}'.format(element=element, flavour=flavour)
-    
+
     def __str__(self):
         return '{{index={index}, element={element}, canonical_rep={canonical_rep}, x={x}}}'.format(
-                                        **{   'index':self.index,
-                                            'element': self.element,
-                                            'canonical_rep': self.canonical_rep,
-                                            'x': self.x
-                                        })
+            index=self.index,
+            element=self.element,
+            canonical_rep=self.canonical_rep,
+            x=self.x,
+        )
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, other, match_coordinates=False):
+        ''' Equality is having everything the same, except the index (because it is artificial) and potentially the coordinates'''
+        return all((
+            self.element == other.element,
+            self.flavour == other.flavour,
+            self.canonical_rep == other.canonical_rep,
+            (not match_coordinates) or (match_coordinates and self.x == other.x),
+        ))
+
+    def __ne__(self, other):
+        return not self == other
+
 
 
 ELEMENT_NUMBERS = {
@@ -38,3 +50,11 @@ ELEMENT_NUMBERS = {
     "BI":83,"PO":84,"AT":85,"RN":86,"FR":87,"RA":88,"AC":89,"TH":90,"PA":91,"U":92,
     "NP":93,"PU":94,"AM":95,"CM":96,"BK":97,"CF":98,"ES":99,"FM":100,"MD":101,"NO":102,
     "LR":103,"RF":104,"DB":105,"SG":106,"BH":107,"HS":108,"MT":109 }
+
+if __name__ == '__main__':
+    a = ChemicalPoint([1.0, 2.0, 3.0], index=2)
+    b = ChemicalPoint([1.0, 2.0, 3.5], index=3)
+
+    print a == b
+    print a != b
+    print a.__eq__(b, match_coordinates=True)

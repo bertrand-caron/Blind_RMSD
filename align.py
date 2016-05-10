@@ -4,6 +4,7 @@ from itertools import product, groupby, permutations
 from functools import partial
 from copy import deepcopy
 from pprint import PrettyPrinter
+from collections import namedtuple
 
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
@@ -40,6 +41,9 @@ EXTRA_POINTS = 2
 ON_BOTH_LISTS = [FIRST_STRUCTURE, SECOND_STRUCTURE]
 
 NULL_RMSD = 0.0
+INFINITE_RMSD = float('inf')
+
+Alignment = namedtuple('Alignment', 'aligned_points, score , extra_points, final_permutation')
 
 def do_assert(something, error_msg):
     assert something, error_msg
@@ -139,20 +143,22 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[FIRST_STRUCTURE]) < 3 :
-        return (
+        return Alignment(
             (centered_point_arrays[FIRST_STRUCTURE]).tolist(),
             NULL_RMSD,
             (centered_point_arrays[EXTRA_POINTS].tolist() if has_extra_points else None),
+            None,
         )
 
     # Break now if there are no rotational component
     if distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]) <= score_tolerance and ALLOW_SHORTCUTS:
         if not silent: print "Info: A simple translation was enough to match the two set of points. Exiting successfully."
         assert_found_permutation_array(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE], silent=silent)
-        return (
+        return Alignment(
             (centered_point_arrays[FIRST_STRUCTURE] + center_of_geometries[SECOND_STRUCTURE]).tolist(),
             distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]),
             (centered_point_arrays[SECOND_STRUCTURE] + center_of_geometries[SECOND_STRUCTURE]).tolist(),
+            None,
         )
 
     method_results = {}
@@ -187,8 +193,15 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         aligned_extra_points_array = None
 
     if best_match == None:
-        if not soft_fail: raise Exception("Best match is None. Something went wrong.")
-        else: return None, float('inf')
+        if not soft_fail:
+            raise Exception("Best match is None. Something went wrong.")
+        else:
+            return Aligment(
+                None,
+                INFINITE_RMSD,
+                None,
+                None,
+            )
 
     if not silent: print "Info: Scores of methods are: {0}".format(dict([ (k, v['score']) for (k,v) in method_results.items() if 'score' in v]))
     if not silent: print "Info: Best score was achieved with method: {0}".format(best_method)
@@ -250,7 +263,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         silent=silent,
     )
 
-    return (
+    return Alignment(
         corrected_best_match.tolist(),
         method_results[best_method]['score'],
         corrected_extra_points.tolist() if has_extra_points else [],

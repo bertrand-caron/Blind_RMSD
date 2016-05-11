@@ -1,3 +1,5 @@
+from scipy.spatial.distance import pdist as distance_matrix
+
 from Blind_RMSD.helpers.numpy_helpers import *
 from Blind_RMSD.helpers.moldata import group_by
 
@@ -12,8 +14,23 @@ def do_assert(something, error_msg, exception_type=None):
         else:
             raise exception_type()
 
-def assert_array_equal(array1, array2, message="{0} and {1} are different", rtol=1e-5):
-    assert np.allclose( array1, array2, rtol=rtol), message.format(array1, array2)
+def assert_array_equal(array1, array2, message="{0} and {1} are different", rtol=1e-5, atol=1e-08):
+    assert np.allclose( array1, array2, rtol=rtol, atol=atol), message.format(array1, array2)
+
+def is_close(a, b, atol=0.0, rtol=0.0):
+    return abs(a - b) <= (atol + rtol * max(a, b))
+
+def assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, silent=True):
+    for i, (d_1, d_2) in enumerate(zip(distance_matrix(array_1), distance_matrix(array_2))):
+        if not is_close(d_1, d_2, atol=atol, rtol=rtol):
+            print i, d_1, d_2
+
+    assert_array_equal(
+        distance_matrix(array_1),
+        distance_matrix(array_2),
+        atol=atol, # Because of the rotation, the coordinates get truncated quite a bit
+        rtol=rtol,
+    )
 
 def assert_found_permutation_array(array1, array2, element_lists=None, flavour_lists=None, mask_array=None, silent=True, hard_fail=False):
     from Blind_RMSD.align import FIRST_STRUCTURE, SECOND_STRUCTURE

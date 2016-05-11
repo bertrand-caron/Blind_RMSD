@@ -4,14 +4,13 @@ from functools import partial
 from copy import deepcopy
 from pprint import PrettyPrinter
 from collections import namedtuple
-from scipy.spatial.distance import pdist as distance_matrix
 
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_elements, on_coords, on_canonical_rep, ELEMENT_NUMBERS
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
 from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
-from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array
+from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, assert_is_isometry, distance_matrix
 from Blind_RMSD.helpers.exceptions import Topology_Error
 
 from Blind_RMSD.lib.charnley_rmsd import kabsch
@@ -44,6 +43,8 @@ ON_BOTH_LISTS = [FIRST_STRUCTURE, SECOND_STRUCTURE]
 Alignment = namedtuple('Alignment', 'aligned_points, score , extra_points, final_permutation')
 
 FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
+
+ASSERT_ISOMETRY = True
 
 def transform_mapping(point_array_1, point_array_2):
     assert len(point_array_1) == len(point_array_2)
@@ -296,15 +297,32 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
         complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
 
-        if not silent:
-            print distance_matrix(complete_molecule_before)
-            print distance_matrix(complete_molecule_after)
+        if ASSERT_ISOMETRY:
+            silent_isometry = False
 
-        assert_array_equal(
-            distance_matrix(complete_molecule_after),
-            distance_matrix(complete_molecule_before),
-            rtol=0.3, # Because of the rotation, the coordinates get truncated quite a bit
-        )
+            assert_is_isometry(
+                point_arrays[FIRST_STRUCTURE],
+                corrected_best_match,
+                silent=silent_isometry,
+            )
+            if not silent_isometry:
+                print 'INFO: aligned_points is isometric'
+
+            assert_is_isometry(
+                point_arrays[EXTRA_POINTS],
+                corrected_extra_points,
+                silent=silent_isometry,
+            )
+            if not silent_isometry:
+                print 'INFO: extra_points is isometric'
+
+            assert_is_isometry(
+                complete_molecule_after,
+                complete_molecule_before,
+                silent=silent_isometry,
+            )
+            if not silent_isometry:
+                print 'INFO: complete_molecule is isometric'
     else:
         corrected_extra_points = None
 

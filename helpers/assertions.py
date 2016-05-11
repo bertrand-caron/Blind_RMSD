@@ -20,7 +20,7 @@ def assert_array_equal(array1, array2, message="{0} and {1} are different", rtol
 def is_close(a, b, atol=0.0, rtol=0.0):
     return abs(a - b) <= (atol + rtol * max(a, b))
 
-def assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, silent=True):
+def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, silent=True):
     for i, (d_1, d_2) in enumerate(zip(distance_matrix(array_1), distance_matrix(array_2))):
         if not is_close(d_1, d_2, atol=atol, rtol=rtol):
             print i, d_1, d_2

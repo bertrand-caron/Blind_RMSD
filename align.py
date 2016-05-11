@@ -10,7 +10,7 @@ from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_elements, on_coor
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
 from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
-from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, assert_is_isometry, distance_matrix
+from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, do_assert_is_isometry, distance_matrix
 from Blind_RMSD.helpers.exceptions import Topology_Error
 
 from Blind_RMSD.lib.charnley_rmsd import kabsch
@@ -44,8 +44,6 @@ Alignment = namedtuple('Alignment', 'aligned_points, score , extra_points, final
 
 FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
 
-ASSERT_ISOMETRY = True
-
 def transform_mapping(point_array_1, point_array_2):
     assert len(point_array_1) == len(point_array_2)
 
@@ -55,7 +53,7 @@ def transform_mapping(point_array_1, point_array_2):
     return transform
 
 # Align points on points
-def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[]):
+def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[], assert_is_isometry=False):
     '''
     '''
 
@@ -297,10 +295,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
         complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
 
-        if ASSERT_ISOMETRY:
+        if assert_is_isometry:
             silent_isometry = False
 
-            assert_is_isometry(
+            do_assert_is_isometry(
                 point_arrays[FIRST_STRUCTURE],
                 corrected_best_match,
                 silent=silent_isometry,
@@ -308,7 +306,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
             if not silent_isometry:
                 print 'INFO: aligned_points is isometric'
 
-            assert_is_isometry(
+            do_assert_is_isometry(
                 point_arrays[EXTRA_POINTS],
                 corrected_extra_points,
                 silent=silent_isometry,
@@ -316,7 +314,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
             if not silent_isometry:
                 print 'INFO: extra_points is isometric'
 
-            assert_is_isometry(
+            do_assert_is_isometry(
                 complete_molecule_after,
                 complete_molecule_before,
                 silent=silent_isometry,

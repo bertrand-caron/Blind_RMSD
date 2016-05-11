@@ -29,6 +29,7 @@ if __name__ == '__main__':
             other_pdb_str=pdb_data[1],
             silent=True,
             soft_fail=False,
+            assert_is_isometry=True,
         )
 
         fit_file_name = '{other}_on_{reference}'.format(reference=test_pair[0], other=test_pair[1])

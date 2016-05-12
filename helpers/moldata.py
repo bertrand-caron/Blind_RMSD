@@ -1,4 +1,4 @@
-from atb_helpers.pdb import substitute_coordinates_in
+from atb_helpers.pdb import substitute_coordinates_in, is_pdb_atom_line
 from atb_helpers.iterables import group_by
 
 def should_keep_atom(atom, united=False):
@@ -85,11 +85,11 @@ def aligned_pdb_str(data, alignment, united=False):
 
     atom_count = 0
     for line in united_hydrogens_pdb_lines(data, united):
-        fields = line.split()
-        if len(fields) != 11:
-            print >> pdb_str, line
-        else:
-            print >> pdb_str, substitute_coordinates_in(line, united_H_coordinates[atom_count])
+        if is_pdb_atom_line(line):
+            print >> pdb_str, substitute_coordinates_in(
+                line,
+                united_H_coordinates[atom_count],
+            )
             atom_count += 1
 
     for connect_line in connect_lines(data):

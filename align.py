@@ -181,10 +181,10 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
             for j, chemical_point1 in enumerate(chemical_points_lists[SECOND_STRUCTURE]):
                 mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else float('inf')
                 dumb_array[i, j] = "{0} {1}".format(chemical_point0.canonical_rep, chemical_point1.canonical_rep)
-        if not silent:
+        if not silent and verbosity >= 5:
             print 'INFO: chemical_points_lists:'
             print chemical_points_lists
-        if not silent:
+        if not silent and verbosity >= 5:
             print 'INFO: dumb_array:'
             print dumb_array
 
@@ -357,7 +357,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
 
         # Make sure the correction has not distorted the inter-distances between EXTRA_POINTS and FIRST_STRUCTURE
         if not soft_fail:
-            if not silent:
+            if not silent and verbosity >= 5:
                 print extra_points
                 print
                 print corrected_extra_points
@@ -628,7 +628,7 @@ and
                 'flavoured_kabsch_failed',
                 {
                     'array': None,
-                    'score': None,
+                    'score': INFINITE_RMSD,
                     'reference_array': point_arrays[SECOND_STRUCTURE],
                     'transform': NO_TRANSFORM,
                 },

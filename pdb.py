@@ -1,3 +1,4 @@
+from traceback import format_exc
 from collections import namedtuple
 
 from chemEquivalency.calcChemEquivalency import partial_mol_data_for_pdbstr
@@ -9,6 +10,8 @@ UNITED_RMSD_FIT = True
 PDB_Data = namedtuple('PDB_Data', 'data, point_lists, element_lists, flavour_lists, extra_points_lists, pdb_str')
 
 FAILED_ALIGNMENT_PDB_STR = ''
+
+Alignment_Results = namedtuple('Alignment_Results', 'success, error_exc')
 
 def pdb_data_for(pdb_str):
     data = partial_mol_data_for_pdbstr(pdb_str).__dict__
@@ -65,5 +68,8 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
     return (
         final_aligned_pdb_str,
         alignment.score,
-        success,
+        Alignment_Results(
+            success,
+            format_exc(),
+        ),
     )

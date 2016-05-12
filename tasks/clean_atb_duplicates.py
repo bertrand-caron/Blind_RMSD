@@ -166,7 +166,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
                 data2 = pdb_data_for(fh.read())
 
             try:
-                aligned_pdb_str, alignment_score, alignment_success = align_pdb_on_pdb(
+                aligned_pdb_str, alignment_score, alignment_results = align_pdb_on_pdb(
                     reference_pdb_data=data1,
                     other_pdb_data=data2,
                     soft_fail=False,

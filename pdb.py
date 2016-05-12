@@ -53,13 +53,17 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             #print >> io, '<p>Aligment Failed for PDB {0}.</p>'.format(i+1)
             print >> io, '<pre>{0}</pre>'.format(alignment)
         final_aligned_pdb_str = other_pdb_data.pdb_str
+        success = False
     else:
         try:
             final_aligned_pdb_str = aligned_pdb_str(other_pdb_data.data, alignment, UNITED_RMSD_FIT)
+            success = True
         except AssertionError:
             final_aligned_pdb_str = other_pdb_data.pdb_str
+            success = False
 
     return (
         final_aligned_pdb_str,
         alignment.score,
+        success,
     )

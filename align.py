@@ -370,7 +370,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
         complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
 
         if assert_is_isometry:
-            silent_isometry = True
+            silent_isometry = False
 
             do_assert_is_isometry(
                 point_arrays[FIRST_STRUCTURE],

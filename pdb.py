@@ -53,7 +53,6 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
 
     if alignment.aligned_points is None: # pragma: no cover
         if io:
-            #print >> io, '<p>Aligment Failed for PDB {0}.</p>'.format(i+1)
             print >> io, '<pre>{0}</pre>'.format(alignment)
         final_aligned_pdb_str = other_pdb_data.pdb_str
         success = False

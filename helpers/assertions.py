@@ -12,7 +12,7 @@ def do_assert(something, error_msg, exception_type=None):
         if exception_type is None:
             raise
         else:
-            raise exception_type()
+            raise exception_type(error_msg)
 
 def assert_array_equal(array1, array2, message="\n{0}\n\nand\n\n{1}\nare different", rtol=1e-5, atol=1e-08):
     assert np.allclose( array1, array2, rtol=rtol, atol=atol), message.format(array1, array2)

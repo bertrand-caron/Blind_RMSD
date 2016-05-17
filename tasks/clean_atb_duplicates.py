@@ -198,6 +198,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
             if alignment_score <= DELETION_THRESHOLD:
                 if not mol1 in to_delete_molecules:
                     to_delete_molecules.append(mol1)
+                    print 'Will delete {0} (canonical_molid: {1})'.format(mol1.molid, mol2.molid)
 
                     if alignment_score <= TINY_RMSD_SHOULD_DELETE and mol1 not in to_delete_NOW_molecules:
                         to_delete_NOW_molecules.append(mol1)
@@ -279,7 +280,7 @@ if __name__ == "__main__":
     args = parse_command_line()
 
     if args.auto:
-        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=100, min_n_atoms=13)
+        test_molecules = api.Molecules.duplicated_inchis(offset=0, limit=1000, min_n_atoms=0)
         for i, mol in enumerate(test_molecules):
             if not mol['molecule_name'] or mol['molecule_name'] == '':
                 mol['molecule_name'] = 'unknown_mol_{n}'.format(n=i)

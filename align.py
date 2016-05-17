@@ -12,8 +12,7 @@ from Blind_RMSD.helpers.permutations import N_amongst_array
 from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
 from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, do_assert_is_isometry, distance_matrix, pdist, is_close
 from Blind_RMSD.helpers.exceptions import Topology_Error
-
-from Blind_RMSD.lib.charnley_rmsd import kabsch
+from Blind_RMSD.helpers.kabsch import kabsch, centroid, Kabsch_Error
 
 pp = PrettyPrinter(indent=2).pprint
 
@@ -206,7 +205,7 @@ def pointsOnPoints(point_lists, silent=True, use_AD=False, element_lists=None, f
     if len(point_lists[FIRST_STRUCTURE]) < 3 :
         return Alignment(
             (centered_point_arrays[FIRST_STRUCTURE]).tolist(),
-            NULL_RMSD,
+            distance_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]),
             (centered_point_arrays[EXTRA_POINTS].tolist() if has_extra_points else None),
             None,
         )
@@ -701,10 +700,15 @@ and
                 ),
             )
 
-            transform = transform_mapping(
-                map(on_coords, ambiguous_unique_points[FIRST_STRUCTURE]),
-                map(on_coords, unique_points_lists[SECOND_STRUCTURE]),
-            )
+            try:
+                transform = transform_mapping(
+                    map(on_coords, ambiguous_unique_points[FIRST_STRUCTURE]),
+                    map(on_coords, unique_points_lists[SECOND_STRUCTURE]),
+                )
+            except Kabsch_Error as e:
+                if not silent:
+                    print e
+                return Alignment_Method_Result('flavoured_kabsch', FAILED_ALIGNMENT)
 
             kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
 
@@ -775,10 +779,16 @@ and
         )
 
         # Align those MIN_N_UNIQUE_POINTS points using Kabsch algorithm
-        current_transform = transform_mapping(
-            map(on_coords, unique_points_lists[FIRST_STRUCTURE]),
-            map(on_coords, unique_points_lists[SECOND_STRUCTURE]),
-        )
+        try:
+            current_transform = transform_mapping(
+                map(on_coords, unique_points_lists[FIRST_STRUCTURE]),
+                map(on_coords, unique_points_lists[SECOND_STRUCTURE]),
+            )
+        except Kabsch_Error as e:
+            if not silent:
+                print e
+            return Alignment_Method_Result('flavoured_kabsch', FAILED_ALIGNMENT)
+
         kabsched_list1 = current_transform(point_arrays[FIRST_STRUCTURE])
 
 #        if show_graph:
@@ -822,7 +832,13 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
         point_lists,
     )
 
-    transform = transform_mapping(*point_arrays)
+    try:
+        transform = transform_mapping(*point_arrays)
+    except Kabsch_Error as e:
+        if not silent:
+            print e
+        return Alignment_Method_Result('lucky_kabsch', FAILED_ALIGNMENT)
+
     kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
 
     current_match = kabsched_list1
@@ -837,10 +853,13 @@ def lucky_kabsch_method(point_lists, element_lists, silent=True, distance_array_
             current_score,
         )
 
-    return {
-        'array': current_match.tolist(),
-        'score': current_score,
-    }
+    return Alignment_Method_Result(
+        'lucky_kabsch',
+        {
+            'array': current_match.tolist(),
+            'score': current_score,
+        },
+    )
 
 def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE):
     N_BRUTEFORCE_KABSCH = 4
@@ -864,7 +883,12 @@ def bruteforce_kabsch_method(point_lists, element_lists, silent=True, distance_a
             permutation,
         )
 
-        transform = transform_mapping(*unique_points)
+        try:
+            transform = transform_mapping(*unique_points)
+        except Kabsch_Error as e:
+            if not silent:
+                print e
+            return Alignment_Method_Result('bruteforce_kabsch_method', FAILED_ALIGNMENT)
 
         kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
 
@@ -906,9 +930,9 @@ def rotation_matrix_kabsch_on_points(points1, points2):
     P, Q = np.array(points1), np.array(points2)
     #print P
     #print Q
-    Pc, Qc = kabsch.centroid(P), kabsch.centroid(Q)
+    Pc, Qc = centroid(P), centroid(Q)
     P, Q = P - Pc, Q - Qc
-    U = kabsch.kabsch(P, Q)
+    U = kabsch(P, Q)
     return U, Pc, Qc
 
 def do_show_graph(array_list):

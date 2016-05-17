@@ -17,6 +17,9 @@ TEST_PAIRS = (
     (7, 8),
     (9, 10),
     (11, 12),
+#    (15, 16),
+    (17, 17),
+    (18, 18),
 )
 
 if __name__ == '__main__':
@@ -27,7 +30,7 @@ if __name__ == '__main__':
         aligned_pdb, alignment_score, alignment_results = align_pdb_on_pdb(
             reference_pdb_str=pdb_data[0],
             other_pdb_str=pdb_data[1],
-            silent=True,
+            silent=False,
             soft_fail=False,
             assert_is_isometry=True,
         )

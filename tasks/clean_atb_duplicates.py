@@ -67,7 +67,7 @@ def download_molecule_files(molecule_name, inchi):
             raise e
     return molecules
 
-def molecule_test_alignment_generator(test_datum):
+def molecule_test_alignment_generator(test_datum, verbosity=0):
     def test(self):
         molecule_name = test_datum['molecule_name']
         expected_rmsd = test_datum['expected_rmsd']
@@ -107,12 +107,12 @@ def molecule_test_alignment_generator(test_datum):
 
         aligned_point_list1, best_score, extra_points, final_permutation = pointsOnPoints(
             deepcopy(point_lists),
-            silent=False,
             use_AD=False,
             element_lists=element_lists,
             flavour_lists=flavour_lists,
             show_graph=SHOW_GRAPH,
             score_tolerance=expected_rmsd,
+            verbosity=verbosity,
         )
         #for i, atom in enumerate(m1.atoms):
         #    atom.x = aligned_point_list1[i]
@@ -124,7 +124,7 @@ def molecule_test_alignment_generator(test_datum):
         self.assertLessEqual( best_score, expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, max_matrix_size=None):
+def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_size=None, verbosity=0):
     OVERWRITE_RESULTS = True
     ONLY_DO_ONE_ROW = False
     NEXT_TEST_STR = '\n\n'
@@ -173,7 +173,7 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
                     reference_pdb_data=data1,
                     other_pdb_data=data2,
                     soft_fail=False,
-                    silent=True,
+                    verbosity=verbosity,
                 )
                 assert alignment_score is not INFINITE_RMSD
             except Topology_Error:
@@ -197,7 +197,6 @@ def get_distance_matrix(test_datum, silent=True, debug=False, no_delete=False, m
                     continue
 
             matrix[i, j] = alignment_score
-            print alignment_score
             if alignment_score <= DELETION_THRESHOLD:
                 if not mol1 in to_delete_molecules:
                     to_delete_molecules.append(mol1)
@@ -272,6 +271,7 @@ def parse_command_line():
     parser = argparse.ArgumentParser()
     parser.add_argument('--only', nargs='*', help="Only run test cases matching these molecule names")
     parser.add_argument('--debug', help="Be overly verbose", action='store_true')
+    parser.add_argument('--verbosity', help="Verbosity level. Zero is silent.", type=int)
     parser.add_argument('--auto', help="Get the inchis from the API", action='store_true')
     parser.add_argument('--nodelete', help="Do not delete molecules", action='store_true')
     parser.add_argument('--max-matrix-size', help="Maximum size of the distance matrix.", dest='max_matrix_size', default=None, type=int)
@@ -297,11 +297,11 @@ if __name__ == "__main__":
     for test_datum in test_molecules:
         if args.only and test_datum['molecule_name'] not in args.only: continue
         if 'id1' in test_datum and 'id2' in test_datum:
-            test = molecule_test_alignment_generator(test_datum)
+            test = molecule_test_alignment_generator(test_datum, verbosity=0)
             setattr(Test_RMSD, "test_" + test_datum['molecule_name'], test)
         get_distance_matrix(
             test_datum,
-            silent=not args.debug,
+            verbosity=args.verbosity,
             debug=args.debug,
             no_delete=args.nodelete,
             max_matrix_size=args.max_matrix_size,

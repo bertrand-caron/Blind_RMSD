@@ -9,7 +9,7 @@ def rmsd(point_list1, point_list2, mask_array=None):
     point_array2 = np.array(point_list2)
     return rmsd_array_for_loop(point_array1, point_array2, mask_array=mask_array)
 
-def rmsd_array(point_array1, point_array2, mask_array = None, silent=True, verbosity=1):
+def rmsd_array(point_array1, point_array2, mask_array = None, verbosity=0):
     do_assert(
         point_array1.shape == point_array2.shape,
         "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2])),
@@ -28,19 +28,19 @@ def rmsd_array(point_array1, point_array2, mask_array = None, silent=True, verbo
     else:
         mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))
 
-    if not silent:
+    if verbosity >= 3:
         print "    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0])
 
     rmsd = sqrt( mean( square( np.min( distance_matrix + np.transpose(mask_array), axis=0 ) ) ) )
 
-    if not silent:
+    if verbosity >= 4:
         print "    Info: New RMSD: {0}".format(rmsd)
 
     raise Exception() # Wrong until proven otherwise
 
     return rmsd
 
-def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=True, verbosity=1):
+def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, verbosity=0):
     assert point_array1.shape == point_array2.shape, "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
 
     distance_matrix = get_distance_matrix(point_array1, point_array2)
@@ -50,13 +50,13 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=Tr
     else:
         mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))
 
-    if not silent and verbosity >= 5:
+    if verbosity >= 5:
         print "    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0])
     #mask_array = np.transpose(mask_array)
-    if not silent and verbosity >= 5:
+    if verbosity >= 5:
         print '    INFO: mask_array:'
         print mask_array
-    if not silent and verbosity >= 5:
+    if verbosity >= 5:
         print '    INFO: distance_matrix:'
         print distance_matrix
 
@@ -72,7 +72,7 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, silent=Tr
 
     assert rmsd != INFINITE_RMSD
 
-    if not silent:
+    if verbosity >= 4:
         print "    Info: New RMSD: {0}".format(rmsd)
 
     return rmsd
@@ -84,7 +84,7 @@ def ad(point_list1, point_list2, mask_array=None):
     point_array2 = np.array(point_list2)
     return ad_array(point_array1, point_array2, mask_array=mask_array)
 
-def ad_array(point_array1, point_array2, mask_array=None, silent=True):
+def ad_array(point_array1, point_array2, mask_array=None, verbosity=0):
     if mask_array:
         assert mask_array.shape == point_array1.shape, 'Error: Shapes of mask arrays do not match'
     else:
@@ -92,7 +92,10 @@ def ad_array(point_array1, point_array2, mask_array=None, silent=True):
     assert point_array1.shape == point_array2.shape, "Error: Won't compute AD on arrays with diference sizes: {0} and {1}".format(*map(lambda x: x.shape, [point_array1, point_array2]))
     distance_matrix = get_distance_matrix(point_array1, point_array2)
     ad = max( np.min( distance_matrix, axis=0 ) )
-    if not silent: print "    Info: New AD: {0}".format(ad)
+
+    if verbosity >= 4:
+        print "    Info: New AD: {0}".format(ad)
+
     return ad
 
 # Return how many point of list1 are within 0.1 Angstrom to another point of list2

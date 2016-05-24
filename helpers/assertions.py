@@ -26,7 +26,7 @@ def distance_matrix(array):
     else:
         return pdist(array)
 
-def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, silent=True, success_msg='Success'):
+def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, success_msg='Success', verbosity=0):
     try:
         assert_array_equal(
             distance_matrix(array_1),
@@ -34,11 +34,11 @@ def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, silent=True, s
             atol=atol, # Because of the rotation, the coordinates get truncated quite a bit
             rtol=rtol,
         )
-        if not silent:
+        if verbosity >= 3:
             print success_msg
     except:
         print 'ERROR: Transformation was not isometric'
-        if not silent:
+        if verbosity >= 5:
             print distance_matrix(array_1)
             print distance_matrix(array_2)
 
@@ -46,7 +46,7 @@ def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, silent=True, s
                 if not is_close(d_1, d_2, atol=atol, rtol=rtol):
                     print i, d_1 - d_2
 
-def assert_found_permutation_array(array1, array2, element_lists=None, flavour_lists=None, mask_array=None, silent=True, hard_fail=False):
+def assert_found_permutation_array(array1, array2, element_lists=None, flavour_lists=None, mask_array=None, hard_fail=False, verbosity=0):
     from Blind_RMSD.align import FIRST_STRUCTURE, SECOND_STRUCTURE
 
     perm_list = []
@@ -73,7 +73,7 @@ def assert_found_permutation_array(array1, array2, element_lists=None, flavour_l
 
     misdefined_indexes = list( set(zip(*perm_list)[0]) - set(zip(*perm_list)[1]) ) + [value for value, group in offending_indexes]
 
-    if not silent:
+    if verbosity >= 4:
         print zip(
             misdefined_indexes,
             map(
@@ -88,16 +88,16 @@ def assert_found_permutation_array(array1, array2, element_lists=None, flavour_l
             sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]),
             "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0])),
         )
-        if not silent:
-            print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+        if verbosity >= 1:
+            print "INFO: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
     else:
         if not sorted(zip(*perm_list)[1]) == list(zip(*perm_list)[0]):
-            if not silent or BYPASS_SILENT:
-                print "Error: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0]))
-                print "Error: Troublesome indexes are {0}".format(misdefined_indexes)
+            if (verbosity >= 1) or BYPASS_SILENT:
+                print "ERROR: {0} is not a permutation of {1}, which means that the best fit does not allow an unambiguous one-on-one mapping of the atoms. The method failed.".format(sorted(zip(*perm_list)[1]), list(zip(*perm_list)[0]))
+                print "ERROR: Troublesome indexes are {0}".format(misdefined_indexes)
             final_permutation = None
         else:
-            if not silent or BYPASS_SILENT:
-                print "Info: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
+            if (verbosity >= 1) or BYPASS_SILENT:
+                print "INFO: {0} is a permutation of {1}. This is a good indication the algorithm might have succeeded.".format(zip(*perm_list)[1], zip(*perm_list)[0])
             final_permutation = perm_list
     return final_permutation

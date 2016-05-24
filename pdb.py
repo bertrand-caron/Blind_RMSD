@@ -25,7 +25,7 @@ def pdb_data_for(pdb_str):
         pdb_str = pdb_str,
     )
 
-def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, silent=True, soft_fail=True, assert_is_isometry=False):
+def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, soft_fail=True, assert_is_isometry=False, verbosity=0):
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
         reference_pdb_data = pdb_data_for(reference_pdb_str)
@@ -40,7 +40,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             element_lists=[other_pdb_data.element_lists, reference_pdb_data.element_lists],
             flavour_lists=[other_pdb_data.flavour_lists, reference_pdb_data.flavour_lists],
             extra_points=other_pdb_data.extra_points_lists,
-            silent=silent,
+            verbosity=verbosity,
             soft_fail=soft_fail,
             assert_is_isometry=assert_is_isometry,
         )

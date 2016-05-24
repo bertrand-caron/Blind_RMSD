@@ -7,7 +7,7 @@ install: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 
 clean_atb_duplicates: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	make clean
-	$(PYTHON_EXEC) tasks/$@.py --auto --nodelete --debug #| tee log.out
+	$(PYTHON_EXEC) tasks/$@.py --auto | tee log_2.out
 .PHONY: clean_atb_duplicates
 
 test: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing

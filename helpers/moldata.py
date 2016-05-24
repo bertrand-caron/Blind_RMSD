@@ -70,8 +70,9 @@ def flavour_list(data, united=False):
 
     flavours =  [
         (
-            #'EQ' + str(len(grouped_eq_list[eq])) + '|' +
-            '|'.join(nth_neighbours[0:FLAVOUR_LIST_SHELL_NUMBER])
+            '|'.join(
+                nth_neighbours[0:FLAVOUR_LIST_SHELL_NUMBER] + ('EQ{0}'.format(len(grouped_eq_list[eq])),)
+            ),
         )
         for (eq, nth_neighbours) in zip(
             eq_list,

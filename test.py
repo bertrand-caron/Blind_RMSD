@@ -42,7 +42,7 @@ if __name__ == '__main__':
                 assert_is_isometry=True,
             )
         except:
-            if SHOULD_FAIL[test_pair]:
+            if test_pair in SHOULD_FAIL:
                 continue
             else:
                 raise

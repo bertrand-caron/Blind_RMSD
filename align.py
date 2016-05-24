@@ -6,7 +6,7 @@ from pprint import PrettyPrinter
 from collections import namedtuple
 
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
-from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_coords, on_canonical_rep, ELEMENT_NUMBERS
+from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_coords, on_flavour, ELEMENT_NUMBERS
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
 from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
@@ -171,7 +171,6 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             point_lists,
             flavour_lists,
             has_flavours,
-            grouped_flavours_lists,
         )
 
         mask_array = np.zeros(
@@ -183,8 +182,8 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         dumb_array = np.chararray((len(flavour_lists[FIRST_STRUCTURE]), len(flavour_lists[FIRST_STRUCTURE])), itemsize=10)
         for i, chemical_point0 in enumerate(chemical_points_lists[FIRST_STRUCTURE]):
             for j, chemical_point1 in enumerate(chemical_points_lists[SECOND_STRUCTURE]):
-                mask_array[i, j] = 0. if chemical_point0.canonical_rep == chemical_point1.canonical_rep else float('inf')
-                dumb_array[i, j] = "{0} {1}".format(chemical_point0.canonical_rep, chemical_point1.canonical_rep)
+                mask_array[i, j] = 0. if chemical_point0.flavour == chemical_point1.flavour else float('inf')
+                dumb_array[i, j] = "{0} {1}".format(chemical_point0.flavour, chemical_point1.flavour)
         if verbosity >= 5:
             print 'INFO: chemical_points_lists:'
             print chemical_points_lists
@@ -487,11 +486,11 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=
         },
     )
 
-def get_chemical_points_lists(point_lists, flavour_lists, has_flavours, grouped_flavours_lists):
+def get_chemical_points_lists(point_lists, flavour_lists, has_flavours):
     N_points = len(point_lists[FIRST_STRUCTURE])
     chemical_points_lists = map(
         lambda index: [
-            ChemicalPoint(*zipped_point, **{'grouped_flavours': grouped_flavours_lists[index]})
+            ChemicalPoint(*zipped_point)
             for zipped_point in zip(
                 point_lists[index],
                 range(N_points),
@@ -536,11 +535,10 @@ def flavoured_kabsch_method(point_lists, distance_array_function=rmsd_array, fla
         point_lists,
         flavour_lists,
         has_flavours,
-        grouped_flavours_lists,
     )
 
     grouped_chemical_points_lists = map(
-        lambda chemical_points: group_by(chemical_points, on_canonical_rep),
+        lambda chemical_points: group_by(chemical_points, on_flavour),
         chemical_points_lists,
     )
     # Try to find MIN_N_UNIQUE_POINTS uniquely-flavoured type points
@@ -548,11 +546,11 @@ def flavoured_kabsch_method(point_lists, distance_array_function=rmsd_array, fla
         lambda grouped_chemical_points: [group[0] for group in grouped_chemical_points.values() if len(group) == 1],
         grouped_chemical_points_lists,
     )
-    # Order them by (decreasing canonical_rep)
+    # Order them by (decreasing flavour)
     unique_points_lists = map(
         lambda index: sorted(
             unique_points_lists[index],
-            key=lambda x: (x.canonical_rep,), #FIXME
+            key=lambda x: (x.flavour,),
             reverse=True,
         ),
         ON_BOTH_LISTS,
@@ -560,8 +558,8 @@ def flavoured_kabsch_method(point_lists, distance_array_function=rmsd_array, fla
 
     if not len(unique_points_lists[FIRST_STRUCTURE]) == len(unique_points_lists[SECOND_STRUCTURE]):
         import yaml
-        canonical_reps = [map(on_canonical_rep, unique_points_list) for unique_points_list in unique_points_lists]
-        total_canonical_reps = set(canonical_reps[0] + canonical_reps[1])
+        flavours = [map(on_flavour, unique_points_list) for unique_points_list in unique_points_lists]
+        total_flavours = set(flavours[0] + flavours[1])
         raise Exception( '''
 ERROR: Non matching number of unique points in
 {0}
@@ -579,12 +577,12 @@ and
 
 {5}
 '''.format(
-        yaml.dump(sorted(unique_points_lists[FIRST_STRUCTURE], key=lambda x: x.canonical_rep)),
+        yaml.dump(sorted(unique_points_lists[FIRST_STRUCTURE], key=lambda x: x.flavour)),
         len(unique_points_lists[FIRST_STRUCTURE]),
-        yaml.dump(sorted(unique_points_lists[SECOND_STRUCTURE], key=lambda x: x.canonical_rep)),
+        yaml.dump(sorted(unique_points_lists[SECOND_STRUCTURE], key=lambda x: x.flavour)),
         len(unique_points_lists[SECOND_STRUCTURE]),
-        '\n'.join([ str(chem_point) for chem_point in unique_points_lists[FIRST_STRUCTURE] if on_canonical_rep(chem_point) not in canonical_reps[1] ]),
-        '\n'.join([ str(chem_point) for chem_point in unique_points_lists[SECOND_STRUCTURE] if on_canonical_rep(chem_point) not in canonical_reps[0] ]),
+        '\n'.join([ str(chem_point) for chem_point in unique_points_lists[FIRST_STRUCTURE] if on_flavour(chem_point) not in flavours[1] ]),
+        '\n'.join([ str(chem_point) for chem_point in unique_points_lists[SECOND_STRUCTURE] if on_flavour(chem_point) not in flavours[0] ]),
     ))
 
     if verbosity >= 3:
@@ -596,22 +594,13 @@ and
 
         missing_points = MIN_N_UNIQUE_POINTS - len(unique_points_lists[FIRST_STRUCTURE])
 
+        # Order groups by length, and then flavour
         ambiguous_point_groups = map(
             lambda grouped_chemical_points: sorted(
                 [group for group in grouped_chemical_points.values() if 1 < len(group) <= MAX_N_COMPLEXITY ],
-                key=len,
+                key= lambda group: (len(group), group[0].flavour),
             ),
             grouped_chemical_points_lists,
-        )
-
-        # Order them by number of heaviest atoms first
-        ambiguous_point_groups = map(
-            lambda index: sorted(
-                ambiguous_point_groups[index],
-                key=lambda x: (), #FIXME
-                reverse=True,
-            ),
-            ON_BOTH_LISTS,
         )
 
         N_ambiguous_points = sum(
@@ -693,14 +682,14 @@ and
                 )
 
             do_assert(
-                map(on_canonical_rep, ambiguous_unique_points[0]) == map(on_canonical_rep, unique_points_lists[SECOND_STRUCTURE]),
+                map(on_flavour, ambiguous_unique_points[0]) == map(on_flavour, unique_points_lists[SECOND_STRUCTURE]),
                 "ERROR: Trying to match points whose flavours don't match: {0} != {1}".format(
                     map(
-                        on_canonical_rep,
+                        on_flavour,
                         ambiguous_unique_points[FIRST_STRUCTURE],
                     ),
                     map(
-                        on_canonical_rep,
+                        on_flavour,
                         unique_points_lists[SECOND_STRUCTURE],
                     ),
                 ),
@@ -764,18 +753,18 @@ and
         )
     else:
         do_assert(
-            map(on_canonical_rep, unique_points_lists[FIRST_STRUCTURE]) == map(on_canonical_rep, unique_points_lists[SECOND_STRUCTURE]),
+            map(on_flavour, unique_points_lists[FIRST_STRUCTURE]) == map(on_flavour, unique_points_lists[SECOND_STRUCTURE]),
             "ERROR: Unique points have not been ordered properly: {0} and {1}".format(
-                map(on_canonical_rep, unique_points_lists[0]),
-                map(on_canonical_rep, unique_points_lists[1]),
+                map(on_flavour, unique_points_lists[0]),
+                map(on_flavour, unique_points_lists[1]),
             ),
         )
 
         do_assert(
-            map(on_canonical_rep, unique_points_lists[FIRST_STRUCTURE]) == map(on_canonical_rep, unique_points_lists[SECOND_STRUCTURE]),
+            map(on_flavour, unique_points_lists[FIRST_STRUCTURE]) == map(on_flavour, unique_points_lists[SECOND_STRUCTURE]),
             'ERROR: Canonical representation of unique points do not match: {0} != {1}'.format(
-                map(on_canonical_rep, unique_points_lists[FIRST_STRUCTURE]),
-                map(on_canonical_rep, unique_points_lists[SECOND_STRUCTURE]),
+                map(on_flavour, unique_points_lists[FIRST_STRUCTURE]),
+                map(on_flavour, unique_points_lists[SECOND_STRUCTURE]),
             ),
         )
 

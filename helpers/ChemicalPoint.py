@@ -2,22 +2,18 @@ from yaml import dump
 
 on_indexes = lambda chemical_point:chemical_point.index
 on_coords = lambda chemical_point: chemical_point.x
-on_canonical_rep = lambda chemical_point: chemical_point.canonical_rep
-
+on_flavour = lambda chemical_point: chemical_point.flavour
 
 class ChemicalPoint:
-    def __init__(self, x, index, flavour=None, grouped_flavours=None):
+    def __init__(self, x, index, flavour):
         self.x = x
         self.index = index
         self.flavour = flavour
-        #self.element = element
-        #self.canonical_rep = element if not grouped_flavours else flavour #FIXME
-        self.canonical_rep = flavour
 
     def __str__(self):
-        return '{{index={index}, canonical_rep={canonical_rep}, x={x}}}'.format(
+        return '{{index={index}, flavour={flavour}, x={x}}}'.format(
             index=self.index,
-            canonical_rep=self.canonical_rep,
+            flavour=self.flavour,
             x=self.x,
         )
     def __repr__(self):
@@ -27,7 +23,6 @@ class ChemicalPoint:
         ''' Equality is having everything the same, except the index (because it is artificial) and potentially the coordinates'''
         return all((
             self.flavour == other.flavour,
-            self.canonical_rep == other.canonical_rep,
             (not match_coordinates) or (match_coordinates and self.x == other.x),
         ))
 

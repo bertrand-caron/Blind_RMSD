@@ -56,9 +56,10 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, verbosity
     if verbosity >= 5:
         print '    INFO: mask_array:'
         print mask_array
-    if verbosity >= 5:
         print '    INFO: distance_matrix:'
         print distance_matrix
+        print '    INFO: masked distance_matrix:'
+        print distance_matrix + mask_array
 
     distances = []
     for point1 in range(mask_array.shape[0]):

@@ -48,7 +48,6 @@ def nth_order_neighbour_elements(data, n, united=False):
     )
 
     for i in range(1, n + 1):
-        print nth_order_indexes
         nth_order_indexes.append([
             connected_atom_indexes_for_indexes(indexes_list, atoms, united)
             for indexes_list in nth_order_indexes[i-1]
@@ -57,7 +56,6 @@ def nth_order_neighbour_elements(data, n, united=False):
     return [
         (i, joined_sorted_atom_types_for_indexes(v, atoms, united))
         for (i, v) in enumerate(nth_order_indexes)
-        if i != 0
     ]
 
 def equivalence_list(data, united=False):
@@ -71,7 +69,10 @@ def flavour_list(data, united=False):
     grouped_eq_list = group_by(equivalence_list(data), lambda x:x)
 
     flavours =  [
-        (str(len(grouped_eq_list[eq])) + '|' + '|'.join(nth_neighbours[0:FLAVOUR_LIST_SHELL_NUMBER]))
+        (
+            #'EQ' + str(len(grouped_eq_list[eq])) + '|' +
+            '|'.join(nth_neighbours[0:FLAVOUR_LIST_SHELL_NUMBER])
+        )
         for (eq, nth_neighbours) in zip(
             eq_list,
             zip(*nth_neighbour_list),
@@ -101,7 +102,7 @@ def point_list(data, united=False):
 def united_hydrogens_point_list(data, united=False):
     return [ map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord']) for index, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
 
-def united_hydrogens_pdb_lines(data, united=False):
+def get_united_hydrogens_pdb_lines(data, united=False):
     return [ atom['pdb'] for _, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
 
 def permutated_list(a_list, permutation):
@@ -112,6 +113,9 @@ def permutated_list(a_list, permutation):
     for (i,j) in sorted(permutation, key=on_j):
         new_list.append(a_list[i])
     return new_list
+
+def map_to_str(a_list):
+    return [str(x) for x in a_list]
 
 def aligned_pdb_str(data, alignment, united=False):
     from StringIO import StringIO
@@ -131,7 +135,7 @@ def aligned_pdb_str(data, alignment, united=False):
         print >> pdb_str, substitute_coordinates_in(line, coordinates)
 
     atom_count = 0
-    for line in united_hydrogens_pdb_lines(data, united):
+    for line in get_united_hydrogens_pdb_lines(data, united):
         if is_pdb_atom_line(line):
             print >> pdb_str, substitute_coordinates_in(
                 line,

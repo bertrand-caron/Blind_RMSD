@@ -46,7 +46,7 @@ def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, success_msg='S
                 if not is_close(d_1, d_2, atol=atol, rtol=rtol):
                     print i, d_1 - d_2
 
-def assert_found_permutation_array(array1, array2, element_lists=None, flavour_lists=None, mask_array=None, hard_fail=False, verbosity=0):
+def assert_found_permutation_array(array1, array2, flavour_lists=None, mask_array=None, hard_fail=False, verbosity=0):
     from Blind_RMSD.align import FIRST_STRUCTURE, SECOND_STRUCTURE
 
     perm_list = []
@@ -77,7 +77,7 @@ def assert_found_permutation_array(array1, array2, element_lists=None, flavour_l
         print zip(
             misdefined_indexes,
             map(
-                lambda x: (element_lists[SECOND_STRUCTURE][x], flavour_lists[SECOND_STRUCTURE][x]),
+                lambda x: (flavour_lists[SECOND_STRUCTURE][x],),
                 misdefined_indexes,
             ),
         )

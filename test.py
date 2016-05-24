@@ -17,23 +17,35 @@ TEST_PAIRS = (
     (7, 8),
     (9, 10),
     (11, 12),
-#    (15, 16),
+    (15, 16),
     (17, 17),
     (18, 18),
+    (19, 20),
 )
+
+SHOULD_FAIL = {
+    (15, 16): True,
+}
 
 if __name__ == '__main__':
     for test_pair in TEST_PAIRS:
         print 'Running test: {0}'.format(test_pair)
 
         pdb_data = [pdb_str(test_ID) for test_ID in test_pair]
-        aligned_pdb, alignment_score, alignment_results = align_pdb_on_pdb(
-            reference_pdb_str=pdb_data[0],
-            other_pdb_str=pdb_data[1],
-            verbosity=1,
-            soft_fail=False,
-            assert_is_isometry=True,
-        )
+
+        try:
+            aligned_pdb, alignment_score, alignment_results = align_pdb_on_pdb(
+                reference_pdb_str=pdb_data[0],
+                other_pdb_str=pdb_data[1],
+                verbosity=0,
+                soft_fail=False,
+                assert_is_isometry=True,
+            )
+        except:
+            if SHOULD_FAIL[test_pair]:
+                continue
+            else:
+                raise
 
         fit_file_name = '{other}_on_{reference}'.format(reference=test_pair[0], other=test_pair[1])
         with open(pdb_data_file(fit_file_name), 'w') as fh:

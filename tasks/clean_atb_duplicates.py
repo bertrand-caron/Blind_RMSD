@@ -35,7 +35,7 @@ SCHEDULED_FOR_DELETION_MOLECULES_FILE = 'testing/{molecule_name}/delete_indexes.
 DELETION_THRESHOLD = 2E-1
 TINY_RMSD_SHOULD_DELETE = 2E-1
 
-TEST_DATA_FILE = 'test_data.yml'
+TEST_DATA_FILE = 'test_data_2.yml'
 
 ERROR_LOG_FILE = 'log.err'
 ERROR_LOG = open(ERROR_LOG_FILE, 'w')

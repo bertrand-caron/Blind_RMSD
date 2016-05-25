@@ -45,7 +45,7 @@ def kabsch(P, Q):
     # see http://en.wikipedia.org/wiki/Kabsch_algorithm
     V, S, W = np.linalg.svd(C)
 
-    if any([is_close(x, 0.0) for x in S]):
+    if sum([1 for x in S if is_close(x, 0.0)]) >= 2:
         raise Kabsch_Error("ERROR: Kabsch points are either coplanar or colinear. Algorithm won't work (SVD was: {0})".format(S))
 
     d = (np.linalg.det(V) * np.linalg.det(W)) < 0.0

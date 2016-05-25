@@ -37,9 +37,11 @@ if __name__ == '__main__':
             aligned_pdb, alignment_score, alignment_results = align_pdb_on_pdb(
                 reference_pdb_str=pdb_data[0],
                 other_pdb_str=pdb_data[1],
-                verbosity=0,
+                verbosity=5,
                 soft_fail=False,
                 assert_is_isometry=True,
+                debug=True,
+                test_id='{0}_{1}'.format(*test_pair),
             )
         except:
             if test_pair in SHOULD_FAIL:

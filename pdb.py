@@ -1,6 +1,7 @@
 from traceback import format_exc
 from collections import namedtuple
-from os.path import abspath, join, dirname
+from os.path import abspath, join, dirname, exists
+from os import mkdir
 
 from chemEquivalency.calcChemEquivalency import partial_mol_data_for_pdbstr
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
@@ -27,7 +28,7 @@ def pdb_data_for(pdb_str):
         pdb_str = pdb_str,
     )
 
-def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, soft_fail=True, assert_is_isometry=False, verbosity=0, debug=False):
+def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, soft_fail=True, assert_is_isometry=False, verbosity=0, debug=False, test_id=''):
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
         reference_pdb_data = pdb_data_for(reference_pdb_str)
@@ -38,8 +39,13 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
 
     if debug:
         def pdb_writing_fct(alignment, file_name):
+            pdb_path = join(DEBUG_DIR, test_id, file_name)
+
+            if not exists(dirname(pdb_path)):
+                mkdir(dirname(pdb_path))
+
             print 'PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score)
-            with open(join(DEBUG_DIR, file_name), 'w') as fh:
+            with open(pdb_path, 'w') as fh:
                 fh.write(
                     aligned_pdb_str(
                         other_pdb_data.data,

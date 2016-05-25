@@ -522,7 +522,10 @@ def flavoured_kabsch_method(point_lists, distance_array_function=rmsd_array, fla
     if verbosity >= 5:
         print '    INFO: {0}'.format(dict(has_flavours=has_flavours))
 
-    MIN_N_UNIQUE_POINTS = DEFAULT_MIN_N_UNIQUE_POINTS if len(point_lists[0]) >= DEFAULT_MIN_N_UNIQUE_POINTS else 3
+    MIN_N_UNIQUE_POINTS = min(
+        DEFAULT_MIN_N_UNIQUE_POINTS,
+        len(point_lists[0]),
+    )
 
     if verbosity >= 3:
         print "    INFO: Found flavours. Trying flavoured {0}-point Kabsch algorithm on flavoured types ...".format(MIN_N_UNIQUE_POINTS)
@@ -803,6 +806,7 @@ and
             )
 
         assert_constant_point_arrays()
+
         return Alignment_Method_Result(
             'flavoured_kabsch_unique',
             {

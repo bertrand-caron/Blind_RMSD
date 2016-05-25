@@ -10,7 +10,7 @@ from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_coords, on_flavou
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.permutations import N_amongst_array
 from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_array_for_loop, NULL_RMSD, INFINITE_RMSD
-from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, do_assert_is_isometry, distance_matrix, pdist, is_close
+from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, do_assert_is_isometry, distance_matrix, pdist, is_close, assert_blind_rmsd_symmetry
 from Blind_RMSD.helpers.exceptions import Topology_Error
 from Blind_RMSD.helpers.kabsch import kabsch, centroid, Kabsch_Error
 
@@ -142,21 +142,6 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         point_arrays,
     )
 
-    if pdb_writing_fct:
-        def dump_pdb(point_array, transform, file_name):
-            pdb_writing_fct(
-                Alignment(
-                    point_array.tolist(),
-                    current_score,
-                    transform(point_arrays[EXTRA_POINTS]).tolist() if has_extra_points else [],
-                    None,
-                ),
-                file_name,
-            )
-    else:
-        def dump_pdb(point_list, transform, file_name):
-            pass
-
     if verbosity >= 4:
         print point_arrays[0]
         print point_arrays[1]
@@ -179,11 +164,17 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
                 len(flavour_lists[SECOND_STRUCTURE]),
             ),
         )
-        dumb_array = np.chararray((len(flavour_lists[FIRST_STRUCTURE]), len(flavour_lists[FIRST_STRUCTURE])), itemsize=10)
-        for i, chemical_point0 in enumerate(chemical_points_lists[FIRST_STRUCTURE]):
-            for j, chemical_point1 in enumerate(chemical_points_lists[SECOND_STRUCTURE]):
-                mask_array[i, j] = 0. if chemical_point0.flavour == chemical_point1.flavour else float('inf')
-                dumb_array[i, j] = "{0} {1}".format(chemical_point0.flavour, chemical_point1.flavour)
+
+        dumb_array = np.chararray(
+            (len(flavour_lists[FIRST_STRUCTURE]), len(flavour_lists[FIRST_STRUCTURE])),
+            itemsize=60,
+        )
+
+        for i, chemical_point_0 in enumerate(chemical_points_lists[FIRST_STRUCTURE]):
+            for j, chemical_point_1 in enumerate(chemical_points_lists[SECOND_STRUCTURE]):
+                mask_array[i, j] = 0. if chemical_point_0.flavour == chemical_point_1.flavour else float('inf')
+                dumb_array[i, j] = "{0} =?= {1}".format(chemical_point_0.flavour, chemical_point_1.flavour)
+
         if verbosity >= 5:
             print 'INFO: chemical_points_lists:'
             print chemical_points_lists
@@ -191,12 +182,39 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             print 'INFO: dumb_array:'
             print dumb_array
 
-    distance_array_function = lambda array_1, array_2: (rmsd_array_for_loop(
-        array_1,
-        array_2,
-        mask_array=mask_array if mask_array is not None else None,
-        verbosity=verbosity,
-    ) if not use_AD else ad_array)
+    if not use_AD:
+        distance_array_function = lambda array_1, array_2, transpose_mask_array=False: rmsd_array_for_loop(
+            array_1,
+            array_2,
+            mask_array=(np.transpose(mask_array) if transpose_mask_array else mask_array) if mask_array is not None else None,
+            verbosity=verbosity,
+        )
+    else:
+        raise Exception('This has not been implemented yet.')
+
+    if pdb_writing_fct:
+        def dump_pdb(point_array, transform, file_name):
+            pdb_writing_fct(
+                Alignment(
+                    point_array.tolist(),
+                    distance_array_function(
+                        point_array,
+                        point_arrays[SECOND_STRUCTURE],
+                    ),
+                    transform(point_arrays[EXTRA_POINTS]).tolist() if has_extra_points else [],
+                    None,
+                ),
+                file_name,
+            )
+    else:
+        def dump_pdb(point_list, transform, file_name):
+            pass
+
+    dump_pdb(
+        point_arrays[FIRST_STRUCTURE],
+        NO_TRANSFORM,
+        'init.pdb',
+    )
 
     # First, remove translational part from both by putting the center of geometry in (0,0,0)
     centered_point_arrays = [
@@ -210,13 +228,19 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
     # Assert than the center of geometry of the translated point list are now on (0,0,0)
     [ assert_array_equal( center_of_geometry(array), ORIGIN) for array in centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE] ]
 
+    def center_on_second_structure(point_array):
+        return point_array + center_of_geometries[SECOND_STRUCTURE]
+
     # Break now if the molecule has less than 3 atoms
     if len(point_lists[FIRST_STRUCTURE]) < 3 :
-        return Alignment(
-            (centered_point_arrays[FIRST_STRUCTURE]).tolist(),
-            distance_array_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]),
-            (centered_point_arrays[EXTRA_POINTS].tolist() if has_extra_points else None),
-            None,
+        return formatted_and_validated_Aligment(
+            center_on_second_structure(centered_point_arrays[FIRST_STRUCTURE]),
+            point_arrays[SECOND_STRUCTURE],
+            distance_array_function,
+            aligned_extra_points=centered_point_arrays[EXTRA_POINTS] if has_extra_points else None,
+            flavour_lists=flavour_lists,
+            mask_array=mask_array,
+            verbosity=verbosity,
         )
 
     # Break now if there are no rotational component
@@ -229,21 +253,14 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         if verbosity >= 1:
             print "INFO: A simple translation was enough to match the two set of points. Exiting successfully."
 
-        assert_found_permutation_array(*
-            centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE],
+        return formatted_and_validated_Aligment(
+            center_on_second_structure(centered_point_arrays[FIRST_STRUCTURE]),
+            point_arrays[SECOND_STRUCTURE],
+            distance_array_function,
+            aligned_extra_points=center_on_second_structure(centered_point_arrays[EXTRA_POINTS]),
             flavour_lists=flavour_lists,
             mask_array=mask_array,
-            verbosity=verbosity
-        )
-
-        def center_on_second_structure(point_array):
-            return point_array + center_of_geometries[SECOND_STRUCTURE]
-
-        return Alignment(
-            center_on_second_structure(centered_point_arrays[FIRST_STRUCTURE]).tolist(),
-            distance_array_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE]),
-            center_on_second_structure(centered_point_arrays[EXTRA_POINTS]).tolist(),
-            None,
+            verbosity=verbosity,
         )
 
     method_results = {}
@@ -267,7 +284,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         add_method_result(
             bruteforce_aligning_vectors_method(
                 point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE],
-                distance_array_function=distance_array_function,
+                distance_array_function,
                 score_tolerance=score_tolerance,
                 verbosity=verbosity,
             ),
@@ -276,8 +293,8 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         add_method_result(
             lucky_kabsch_method(
                 point_lists,
+                distance_array_function,
                 flavour_lists=flavour_lists,
-                distance_array_function=distance_array_function,
                 score_tolerance=score_tolerance,
                 show_graph=show_graph,
                 verbosity=verbosity,
@@ -287,8 +304,8 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         add_method_result(
             bruteforce_kabsch_method(
                 point_lists,
+                distance_array_function,
                 flavour_lists=flavour_lists,
-                distance_array_function=distance_array_function,
                 score_tolerance=score_tolerance,
                 show_graph=show_graph,
                 verbosity=verbosity,
@@ -300,8 +317,8 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         add_method_result(
             flavoured_kabsch_method(
                 point_lists,
+                distance_array_function,
                 flavour_lists=flavour_lists,
-                distance_array_function=distance_array_function,
                 score_tolerance=score_tolerance,
                 show_graph=show_graph,
                 verbosity=verbosity,
@@ -399,29 +416,58 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
     else:
         corrected_extra_points = None
 
+    return formatted_and_validated_Aligment(
+        corrected_best_match,
+        point_arrays[SECOND_STRUCTURE],
+        distance_array_function,
+        flavour_lists=flavour_lists,
+        aligned_extra_points=corrected_extra_points,
+        mask_array=mask_array,
+        verbosity=verbosity,
+        dump_pdb=dump_pdb,
+    )
+
+def formatted_and_validated_Aligment(aligned_point_array, reference_point_array, distance_array_function, flavour_lists=None, aligned_extra_points=None, mask_array=None, verbosity=0, dump_pdb=None):
     assert_array_equal(*
-        map(center_of_geometry, [corrected_best_match, point_arrays[SECOND_STRUCTURE]]),
+        map(center_of_geometry, (aligned_point_array, reference_point_array,)),
         message="{0} != {1}"
     )
 
+    dump_pdb(
+        aligned_point_array,
+        NO_TRANSFORM,
+        'last.pdb'
+    )
+
     final_permutation = assert_found_permutation_array(
-        corrected_best_match,
-        point_arrays[SECOND_STRUCTURE],
+        aligned_point_array,
+        reference_point_array,
         flavour_lists=flavour_lists,
         mask_array=mask_array if mask_array is not None else None,
         verbosity=verbosity,
     )
 
+    if final_permutation is not None:
+        assert_blind_rmsd_symmetry(
+            aligned_point_array,
+            reference_point_array,
+            distance_array_function,
+            verbosity=verbosity,
+        )
+
     return Alignment(
-        corrected_best_match.tolist(),
-        method_results[best_method]['score'],
-        corrected_extra_points.tolist() if has_extra_points else [],
+        aligned_point_array.tolist(),
+        distance_array_function( #FIXME
+            aligned_point_array,
+            reference_point_array,
+        ),
+        aligned_extra_points.tolist() if aligned_extra_points is not None else [],
         final_permutation,
     )
 
 ### METHODS ###
 
-def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function=rmsd_array, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
+def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
     # First, select our first point on the translated structure; it is mandatory that this point is not on the center of geometry
     reference_vectors = [None, None]
     for point in centered_arrays[0][:,0:3]:
@@ -501,7 +547,7 @@ def get_chemical_points_lists(point_lists, flavour_lists, has_flavours):
     )
     return chemical_points_lists
 
-def flavoured_kabsch_method(point_lists, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, extra_points=[], verbosity=0, dump_pdb=None):
+def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, extra_points=[], verbosity=0, dump_pdb=None):
     point_arrays = map(
         np.array,
         point_lists,
@@ -817,7 +863,7 @@ and
             }
         )
 
-def lucky_kabsch_method(point_lists, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
+def lucky_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
     point_arrays = map(
         np.array,
         point_lists,
@@ -851,7 +897,7 @@ def lucky_kabsch_method(point_lists, distance_array_function=rmsd_array, flavour
         },
     )
 
-def bruteforce_kabsch_method(point_lists, distance_array_function=rmsd_array, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
+def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
     N_BRUTEFORCE_KABSCH = 4
 
     point_arrays = map(

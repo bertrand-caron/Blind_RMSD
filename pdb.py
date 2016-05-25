@@ -44,7 +44,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             if not exists(dirname(pdb_path)):
                 mkdir(dirname(pdb_path))
 
-            print 'PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score)
+            print '    PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score)
             with open(pdb_path, 'w') as fh:
                 fh.write(
                     aligned_pdb_str(

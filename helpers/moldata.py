@@ -61,7 +61,7 @@ def nth_order_neighbour_elements(data, n, united=False):
 def equivalence_list(data, united=False):
     return split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ])
 
-FLAVOUR_LIST_SHELL_NUMBER = 2
+FLAVOUR_LIST_SHELL_NUMBER = 4
 
 def flavour_list(data, united=False):
     eq_list = equivalence_list(data, united)

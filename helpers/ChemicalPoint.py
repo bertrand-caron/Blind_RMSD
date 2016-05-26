@@ -29,7 +29,8 @@ class ChemicalPoint:
     def __ne__(self, other):
         return not self == other
 
-
+    def __hash__(self):
+        return str(self).__hash__()
 
 ELEMENT_NUMBERS = {
     "H":1,"HE":2,"LI":3,"BE":4,"B":5,"C":6,"N":7,"O":8,"F":9,"NE":10,"NA":11,"MG":12,

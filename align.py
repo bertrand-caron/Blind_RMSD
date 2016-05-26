@@ -181,6 +181,11 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         if verbosity >= 5:
             print 'INFO: dumb_array:'
             print dumb_array
+    else:
+        mask_array = None
+        chemical_points_lists = None
+
+    print chemical_points_lists
 
     if not use_AD:
         distance_array_function = lambda array_1, array_2, transpose_mask_array=False: rmsd_array_for_loop(
@@ -238,7 +243,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             point_arrays[SECOND_STRUCTURE],
             distance_array_function,
             aligned_extra_points=centered_point_arrays[EXTRA_POINTS] if has_extra_points else None,
-            flavour_lists=flavour_lists,
+            chemical_points_lists=chemical_points_lists,
             mask_array=mask_array,
             verbosity=verbosity,
         )
@@ -258,7 +263,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             point_arrays[SECOND_STRUCTURE],
             distance_array_function,
             aligned_extra_points=center_on_second_structure(centered_point_arrays[EXTRA_POINTS]),
-            flavour_lists=flavour_lists,
+            chemical_points_lists=chemical_points_lists,
             mask_array=mask_array,
             verbosity=verbosity,
         )
@@ -420,14 +425,14 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         corrected_best_match,
         point_arrays[SECOND_STRUCTURE],
         distance_array_function,
-        flavour_lists=flavour_lists,
         aligned_extra_points=corrected_extra_points,
+        chemical_points_lists=chemical_points_lists,
         mask_array=mask_array,
         verbosity=verbosity,
         dump_pdb=dump_pdb,
     )
 
-def formatted_and_validated_Aligment(aligned_point_array, reference_point_array, distance_array_function, flavour_lists=None, aligned_extra_points=None, mask_array=None, verbosity=0, dump_pdb=None):
+def formatted_and_validated_Aligment(aligned_point_array, reference_point_array, distance_array_function, chemical_points_lists=None, aligned_extra_points=None, mask_array=None, verbosity=0, dump_pdb=None):
     assert_array_equal(*
         map(center_of_geometry, (aligned_point_array, reference_point_array,)),
         message="{0} != {1}"
@@ -442,7 +447,7 @@ def formatted_and_validated_Aligment(aligned_point_array, reference_point_array,
     final_permutation = assert_found_permutation_array(
         aligned_point_array,
         reference_point_array,
-        flavour_lists=flavour_lists,
+        chemical_points_lists=chemical_points_lists,
         mask_array=mask_array if mask_array is not None else None,
         verbosity=verbosity,
     )

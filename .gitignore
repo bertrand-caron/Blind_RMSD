@@ -7,4 +7,4 @@ testing
 .project
 .pydevproject
 log.err
-log.out
+*.out

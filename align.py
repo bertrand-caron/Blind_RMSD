@@ -185,8 +185,6 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         mask_array = None
         chemical_points_lists = None
 
-    print chemical_points_lists
-
     if not use_AD:
         distance_array_function = lambda array_1, array_2, transpose_mask_array=False: rmsd_array_for_loop(
             array_1,

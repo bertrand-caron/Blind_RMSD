@@ -117,11 +117,13 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
     do_assert(
         len(point_lists[FIRST_STRUCTURE]) == len(point_lists[SECOND_STRUCTURE]),
         "ERROR: Size of point lists doesn't match: {0} and {1}".format(*map(len, point_lists)),
+        exception_type=Topology_Error,
     )
     if has_flavours:
         do_assert(
             len(flavour_lists[FIRST_STRUCTURE]) == len(flavour_lists[SECOND_STRUCTURE]),
             "ERROR: Size of flavour lists doesn't match: {0} and {1}".format(*map(len, flavour_lists)),
+            exception_type=Topology_Error,
         )
         do_assert(
             len(flavour_lists[FIRST_STRUCTURE]) == len(point_lists[SECOND_STRUCTURE]),
@@ -193,7 +195,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             verbosity=verbosity,
         )
     else:
-        raise Exception('This has not been implemented yet.')
+        raise AssertionError('This has not been implemented yet.')
 
     if pdb_writing_fct:
         def dump_pdb(point_array, transform, file_name):
@@ -369,7 +371,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
 
     if best_match is None:
         if not soft_fail:
-            raise Exception("Best match is None. Something went wrong.")
+            raise AssertionError("Best match is None. Something went wrong.")
         else:
             return FAILED_ALIGNMENT
 
@@ -612,7 +614,7 @@ def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=
         import yaml
         flavours = [map(on_flavour, unique_points_list) for unique_points_list in unique_points_lists]
         total_flavours = set(flavours[0] + flavours[1])
-        raise Exception( '''
+        raise AssertionError( '''
 ERROR: Non matching number of unique points in
 {0}
 (len={1})

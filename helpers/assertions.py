@@ -96,8 +96,9 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
             if distance < min_dist:
                 min_dist, min_j = distance, j
             elif distance == min_dist:
-                if distance != INF:
-                    raise Exception('ERROR: equal distance clash (i={0}, j={1})'.format(i, j))
+                if False:
+                    if distance != INF:
+                        raise Exception('ERROR: equal distance clash (i={0}, j={1})'.format(i, j))
         return (
             chemical_points_lists[FIRST_STRUCTURE][i],
             chemical_points_lists[SECOND_STRUCTURE][min_j],
@@ -143,7 +144,7 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
 
     try:
         assert mapped_several_times == set()
-    except AsstionError:
+    except AssertionError:
         if hard_fail:
             raise
 

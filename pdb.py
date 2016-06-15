@@ -67,14 +67,14 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             assert_is_isometry=assert_is_isometry,
             pdb_writing_fct=pdb_writing_fct,
         )
-    except Topology_Error as e:
+    except (Topology_Error, AssertionError) as e:
         raise
-    except Exception as e:
-        alignment = FAILED_ALIGNMENT
-        if io:
-            print >> io, '<pre>{0}</pre>'.format(e)
-        if not soft_fail:
-            raise
+#    except Exception as e:
+#        alignment = FAILED_ALIGNMENT
+#        if io:
+#            print >> io, '<pre>{0}</pre>'.format(e)
+#        if not soft_fail:
+#            raise
 
     if alignment.aligned_points is None: # pragma: no cover
         if io:

@@ -6,6 +6,7 @@ from os import mkdir
 from chemEquivalency.calcChemEquivalency import partial_mol_data_for_pdbstr
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
+from Blind_RMSD.helpers.exceptions import Topology_Error
 
 UNITED_RMSD_FIT = True
 
@@ -66,7 +67,9 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             assert_is_isometry=assert_is_isometry,
             pdb_writing_fct=pdb_writing_fct,
         )
-    except Exception, e:
+    except Topology_Error as e:
+        raise
+    except Exception as e:
         alignment = FAILED_ALIGNMENT
         if io:
             print >> io, '<pre>{0}</pre>'.format(e)

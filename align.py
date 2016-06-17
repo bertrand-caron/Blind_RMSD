@@ -47,6 +47,8 @@ FAILED_ALIGNMENT = Alignment(None, INFINITE_RMSD, None, None)
 
 NULL_PDB_WRITING_FCT = lambda alignment, file_name: None
 
+DUMMY_DUMP_PDB = lambda point_list, transform, file_name: None
+
 def transform_mapping(P, Q, verbosity=0):
     assert len(P) == len(Q)
 
@@ -212,8 +214,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
                 file_name,
             )
     else:
-        def dump_pdb(point_list, transform, file_name):
-            pass
+        dump_pdb = DUMMY_DUMP_PDB
 
     dump_pdb(
         point_arrays[FIRST_STRUCTURE],
@@ -432,7 +433,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         dump_pdb=dump_pdb,
     )
 
-def formatted_and_validated_Aligment(aligned_point_array, reference_point_array, distance_array_function, chemical_points_lists=None, aligned_extra_points=None, mask_array=None, verbosity=0, dump_pdb=None):
+def formatted_and_validated_Aligment(aligned_point_array, reference_point_array, distance_array_function, chemical_points_lists=None, aligned_extra_points=None, mask_array=None, verbosity=0, dump_pdb=DUMMY_DUMP_PDB):
     assert_array_equal(*
         map(center_of_geometry, (aligned_point_array, reference_point_array,)),
         message="{0} != {1}"
@@ -552,7 +553,7 @@ def get_chemical_points_lists(point_lists, flavour_lists, has_flavours):
     )
     return chemical_points_lists
 
-def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, extra_points=[], verbosity=0, dump_pdb=None):
+def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, extra_points=[], verbosity=0, dump_pdb=DUMMY_DUMP_PDB):
     point_arrays = map(
         np.array,
         point_lists,

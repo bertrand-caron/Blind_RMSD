@@ -2,6 +2,7 @@ from traceback import format_exc
 from collections import namedtuple
 from os.path import abspath, join, dirname, exists
 from os import mkdir
+from scipy.spatial.distance import squareform
 
 from chemEquivalency.calcChemEquivalency import partial_mol_data_for_pdbstr
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
@@ -97,3 +98,26 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             format_exc(),
         ),
     )
+
+def rmsd_matrix_for(list_of_pdb_str):
+    list_of_pdb_data = map(
+        pdb_data_for,
+        list_of_pdb_str,
+    )
+
+    get_alignment_rmsd = lambda alignment: alignment[1]
+
+    rmsds = [
+        [
+            get_alignment_rmsd(
+                align_pdb_on_pdb(
+                    reference_pdb_data=pdb_data_1,
+                    other_pdb_data=pdb_data_2,
+                ),
+            )
+            for pdb_data_2 in list_of_pdb_data[i + 1:]
+        ]
+        for (i, pdb_data_1) in enumerate(list_of_pdb_data)
+    ]
+
+    return squareform(reduce(lambda acc, e: acc + e, rmsds, []))

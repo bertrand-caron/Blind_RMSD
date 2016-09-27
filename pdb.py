@@ -69,7 +69,10 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             pdb_writing_fct=pdb_writing_fct,
         )
     except (Topology_Error, AssertionError) as e:
-        raise
+        if soft_fail:
+            return FAILED_ALIGNMENT
+        else:
+            raise
 #    except Exception as e:
 #        alignment = FAILED_ALIGNMENT
 #        if io:
@@ -113,6 +116,7 @@ def rmsd_matrix_for(list_of_pdb_str):
                 align_pdb_on_pdb(
                     reference_pdb_data=pdb_data_1,
                     other_pdb_data=pdb_data_2,
+                    soft_fail=True,
                 ),
             )
             for pdb_data_2 in list_of_pdb_data[i + 1:]

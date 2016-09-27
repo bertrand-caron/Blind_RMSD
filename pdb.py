@@ -69,10 +69,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             pdb_writing_fct=pdb_writing_fct,
         )
     except (Topology_Error, AssertionError) as e:
-        if soft_fail:
-            return FAILED_ALIGNMENT
-        else:
-            raise
+        raise
 #    except Exception as e:
 #        alignment = FAILED_ALIGNMENT
 #        if io:
@@ -108,16 +105,22 @@ def rmsd_matrix_for(list_of_pdb_str):
         list_of_pdb_str,
     )
 
-    get_alignment_rmsd = lambda alignment: alignment[1]
+    def get_alignment_score(reference_pdb_data, other_pdb_data):
+        try:
+            alignment = align_pdb_on_pdb(
+                reference_pdb_data=reference_pdb_data,
+                other_pdb_data=other_pdb_data,
+                soft_fail=True,
+            )
+            return alignment[1]
+        except Topology_Error:
+            return float('inf')
 
     rmsds = [
         [
-            get_alignment_rmsd(
-                align_pdb_on_pdb(
-                    reference_pdb_data=pdb_data_1,
-                    other_pdb_data=pdb_data_2,
-                    soft_fail=True,
-                ),
+            get_alignment_score(
+                pdb_data_1,
+                pdb_data_2,
             )
             for pdb_data_2 in list_of_pdb_data[i + 1:]
         ]

@@ -49,6 +49,6 @@ if __name__ == '__main__':
     a = ChemicalPoint([1.0, 2.0, 3.0], index=2)
     b = ChemicalPoint([1.0, 2.0, 3.5], index=3)
 
-    print a == b
-    print a != b
-    print a.__eq__(b, match_coordinates=True)
+    print(a == b)
+    print(a != b)
+    print(a.__eq__(b, match_coordinates=True))

@@ -8,6 +8,7 @@ from chemEquivalency.calcChemEquivalency import partial_mol_data_for_pdbstr
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
 from Blind_RMSD.helpers.exceptions import Topology_Error
+from functools import reduce
 
 UNITED_RMSD_FIT = True
 
@@ -46,7 +47,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
             if not exists(dirname(pdb_path)):
                 mkdir(dirname(pdb_path))
 
-            print '    PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score)
+            print('    PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score))
             with open(pdb_path, 'w') as fh:
                 fh.write(
                     aligned_pdb_str(
@@ -79,7 +80,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
 
     if alignment.aligned_points is None: # pragma: no cover
         if io:
-            print >> io, '<pre>{0}</pre>'.format(alignment)
+            print('<pre>{0}</pre>'.format(alignment), file=io)
         final_aligned_pdb_str = other_pdb_data.pdb_str
         success = False
     else:
@@ -100,10 +101,10 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
     )
 
 def rmsd_matrix_for(list_of_pdb_str):
-    list_of_pdb_data = map(
+    list_of_pdb_data = list(map(
         pdb_data_for,
         list_of_pdb_str,
-    )
+    ))
 
     def get_alignment_score(reference_pdb_data, other_pdb_data):
         try:

@@ -35,7 +35,7 @@ def plotVect(R, V):
 
 def plotLine(line):
     ax = getFig()
-    x, y, z = zip(*line)
+    x, y, z = list(zip(*line))
     ax.plot(x,y,z)
 
 def getFig():

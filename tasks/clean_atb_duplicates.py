@@ -6,7 +6,7 @@ import logging
 import pmx
 logging.basicConfig(level=logging.DEBUG, format='    [%(levelname)s] - %(message)s')
 from yaml import load, dump
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 from os.path import exists, dirname, join
 from copy import deepcopy
 import shutil
@@ -48,10 +48,10 @@ def download_molecule_files(molecule_name, inchi):
     def sorted_mols_for_InChI(inchi):
         matches = api.Molecules.search(InChI=inchi)
         sorted_molecules = sorted(matches, key=lambda m: (not m.has_TI, m.molid))
-        print 'Results: {0} (Inchi was: "{1}")'.format(map(lambda m:m.molid, sorted_molecules), inchi)
+        print('Results: {0} (Inchi was: "{1}")'.format([m.molid for m in sorted_molecules], inchi))
         return sorted_molecules
 
-    print 'Testing molecule: {0}'.format(molecule_name)
+    print('Testing molecule: {0}'.format(molecule_name))
     molecules =  sorted_mols_for_InChI(inchi)
 
     for version, molecule  in enumerate(molecules):
@@ -61,7 +61,7 @@ def download_molecule_files(molecule_name, inchi):
                 if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
                 # This was a disaster waiting to happen, don't assume that the mapping molid -> temporary index is permanent (which is it not, since we are deleting molecules !)
                 if not exists(file_name) or True: molecule.download_file(fnme=file_name, atb_format=extension)
-        except Exception, e:
+        except Exception as e:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
             if exists(directory): shutil.rmtree(directory)
             raise e
@@ -73,12 +73,12 @@ def molecule_test_alignment_generator(test_datum, verbosity=0):
         expected_rmsd = test_datum['expected_rmsd']
 
         molids = download_molecule_files(molecule_name, test_datum['InChI'])
-        molid_to_index = dict(zip(molids, range(len(molids))))
-        version1, version2 = map(lambda an_id:molid_to_index[test_datum[an_id]], ['id1', 'id2'])
-        file1, file2 = map(lambda version: FILE_TEMPLATE.format(molecule_name=molecule_name, version=version, extension='{extension}'), [version1, version2])
+        molid_to_index = dict(list(zip(molids, list(range(len(molids))))))
+        version1, version2 = [molid_to_index[test_datum[an_id]] for an_id in ['id1', 'id2']]
+        file1, file2 = [FILE_TEMPLATE.format(molecule_name=molecule_name, version=version, extension='{extension}') for version in [version1, version2]]
 
         if len(molids) == 1:
-            print "Error: Can't run as there are only one molecule in the test suite."
+            print("Error: Can't run as there are only one molecule in the test suite.")
             return
         raise Exception("This is broken")
         m1 = pmx.Model(file1.format(extension='pdb'))
@@ -90,16 +90,16 @@ def molecule_test_alignment_generator(test_datum, verbosity=0):
 
         with open(file1.format(extension='yml')) as fh: data1 = load(fh.read())
         with open(file2.format(extension='yml')) as fh: data2 = load(fh.read())
-        flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data1['atoms'].items()])
-        flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data2['atoms'].items()])
-        element_list1 = [ atom['type'] for index, atom in data1['atoms'].items()]
-        element_list2 = [ atom['type'] for index, atom in data2['atoms'].items()]
+        flavour_list1 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in list(data1['atoms'].items())])
+        flavour_list2 = split_equivalence_group([ atom['equivalenceGroup'] for index, atom in list(data2['atoms'].items())])
+        element_list1 = [ atom['type'] for index, atom in list(data1['atoms'].items())]
+        element_list2 = [ atom['type'] for index, atom in list(data2['atoms'].items())]
 
         flavour_lists, element_lists = [flavour_list1, flavour_list2], [element_list1, element_list2]
 
         def bond_matrix(data):
             def bond_line(data):
-                return [ 0 if index not in atom['conn'] else 1 for index in map(lambda x:x+1, range(0, len(data['atoms'])))]
+                return [ 0 if index not in atom['conn'] else 1 for index in [x+1 for x in range(0, len(data['atoms']))]]
             return [ bond_line(data) for _, atom in sorted(data['atoms'].items())]
 
         sys.stderr.write("\n")
@@ -120,7 +120,7 @@ def molecule_test_alignment_generator(test_datum, verbosity=0):
 
         logging.info("Score after alignment: {0:.4f}".format(best_score))
         logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
-        logging.info("To debug these results, run 'pymol {0} {1}'".format( *map(lambda file: file.format(extension='pdb'), [FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(version2, version1), extension='{extension}'), file1]) ))
+        logging.info("To debug these results, run 'pymol {0} {1}'".format( *[file.format(extension='pdb') for file in [FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(version2, version1), extension='{extension}'), file1]] ))
         self.assertLessEqual( best_score, expected_rmsd)
     return test
 
@@ -135,10 +135,10 @@ def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_siz
     molecules = download_molecule_files(molecule_name, test_datum['InChI'])
 
     if len(molecules) == 1:
-        print "Found only 1 molecule matching this InChI string. Good job !" + NEXT_TEST_STR
+        print("Found only 1 molecule matching this InChI string. Good job !" + NEXT_TEST_STR)
         return
     elif len(molecules) == 0:
-        print "All instance of this molecule are private. Aborting this particular test."
+        print("All instance of this molecule are private. Aborting this particular test.")
         return
 
     if max_matrix_size:
@@ -177,11 +177,11 @@ def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_siz
                 )
                 assert alignment_score is not INFINITE_RMSD
             except Topology_Error:
-                print 'WARNING: Faulty inchi: {0}'.format(mol1.inchi)
+                print('WARNING: Faulty inchi: {0}'.format(mol1.inchi))
                 faulty_inchis.append(mol1.inchi)
                 continue
-            except Exception, e:
-                print 'Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e)
+            except Exception as e:
+                print('Error: Failed on matching {0} to {1}; error was {2}'.format(i, j, e))
                 ERROR_LOG.write(
                     'ERROR: InChI={inchi}, molids={molids}, msg="{msg}"\n'.format(
                         inchi=mol1.inchi,
@@ -200,7 +200,7 @@ def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_siz
             if alignment_score <= DELETION_THRESHOLD:
                 if not mol1 in to_delete_molecules:
                     to_delete_molecules.append(mol1)
-                    print 'Will delete {0} (canonical_molid: {1})'.format(mol1.molid, mol2.molid)
+                    print('Will delete {0} (canonical_molid: {1})'.format(mol1.molid, mol2.molid))
 
                     if alignment_score <= TINY_RMSD_SHOULD_DELETE and mol1 not in to_delete_NOW_molecules:
                         to_delete_NOW_molecules.append(mol1)
@@ -216,21 +216,21 @@ def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_siz
     if not exists(matrix_log_file):
         numpy.savetxt(matrix_log_file, matrix, fmt='%4.3f')
 
-    print 'Debug these results by running: "pymol {0} {1}"'.format(
+    print('Debug these results by running: "pymol {0} {1}"'.format(
         FILE_TEMPLATE.format(molecule_name=molecule_name, version='0', extension='pdb'),
         FILE_TEMPLATE.format(molecule_name=molecule_name, version='*_aligned_on_0', extension='pdb'),
-    )
-    print matrix
-    print 'View these results online at URL: {0}'.format(
+    ))
+    print(matrix)
+    print('View these results online at URL: {0}'.format(
         join(
             ATB_HOST,
             'index.py?tab=blind_rmsd_fit&molids={0}'.format(str([m.molid for m in molecules]).replace(' ', '')),
         ),
-    )
+    ))
 
     # Write the list of molids to delete in a file
     deletion_file = SCHEDULED_FOR_DELETION_MOLECULES_FILE.format(molecule_name=molecule_name)
-    to_delete_molids = map(lambda m: m.molid, to_delete_molecules)
+    to_delete_molids = [m.molid for m in to_delete_molecules]
     with open(deletion_file, 'w') as fj:
         fj.write('''
         pymol -M {pymol_files}
@@ -246,14 +246,14 @@ def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_siz
     #print 'To do so, run: "chmod +x {deletion_file} && ./{deletion_file}"'.format(deletion_file=deletion_file)
     if not (no_delete or debug): 
         try:
-            print "Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules])
-        except urllib2.HTTPError, e:
-            print 'Something went wrong while trying to delte duplicate. Error was: '
-            print e
+            print("Deleting NOW the following molids: {0}".format([mol.delete_duplicate() for mol in to_delete_NOW_molecules]))
+        except urllib.error.HTTPError as e:
+            print('Something went wrong while trying to delte duplicate. Error was: ')
+            print(e)
     else:
-        print 'Running in no_delete / debug mode. Otherwise, would have deleted molids: {0}'.format([mol.molid for mol in to_delete_NOW_molecules])
+        print('Running in no_delete / debug mode. Otherwise, would have deleted molids: {0}'.format([mol.molid for mol in to_delete_NOW_molecules]))
 
-    print NEXT_TEST_STR
+    print(NEXT_TEST_STR)
 
 class Test_RMSD(unittest.TestCase):
     def run(self, result=None):
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     else:
         with open(TEST_DATA_FILE) as fh: test_molecules = load(fh.read())
 
-    print "Test data is:\n{0}\n".format(dump(test_molecules))
+    print("Test data is:\n{0}\n".format(dump(test_molecules)))
     for test_datum in test_molecules:
         if args.only and test_datum['molecule_name'] not in args.only: continue
         if 'id1' in test_datum and 'id2' in test_datum:
@@ -307,8 +307,8 @@ if __name__ == "__main__":
             max_matrix_size=args.max_matrix_size,
         )
 
-    print 'Faulty inchis'
-    print set(faulty_inchis)
+    print('Faulty inchis')
+    print(set(faulty_inchis))
 
     suite = unittest.TestLoader().loadTestsFromTestCase(Test_RMSD)
     unittest.TextTestRunner(verbosity=4).run(suite)

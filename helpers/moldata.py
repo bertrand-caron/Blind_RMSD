@@ -43,7 +43,7 @@ def nth_order_neighbour_elements(data, n, united=False):
     nth_order_indexes.append(
         [
             [index]
-            for (index, atom) in atoms.items()
+            for (index, atom) in list(atoms.items())
             if should_keep_atom(atom, united) ]
     )
 
@@ -59,7 +59,7 @@ def nth_order_neighbour_elements(data, n, united=False):
     ]
 
 def equivalence_list(data, united=False):
-    return split_equivalence_group([ atom['equivalenceGroup'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ])
+    return split_equivalence_group([ atom['equivalenceGroup'] for index, atom in list(data['atoms'].items()) if should_keep_atom(atom, united) ])
 
 FLAVOUR_LIST_SHELL_NUMBER = 4
 
@@ -76,17 +76,17 @@ def flavour_list(data, united=False):
         )
         for (eq, nth_neighbours) in zip(
             eq_list,
-            zip(*nth_neighbour_list),
+            list(zip(*nth_neighbour_list)),
         )
     ]
 
     return flavours
 
 def element_list(data, united=False):
-    return [ atom['type'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
+    return [ atom['type'] for index, atom in list(data['atoms'].items()) if should_keep_atom(atom, united) ]
 
 def pdb_lines(data, united=False):
-    return [atom['pdb'] for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
+    return [atom['pdb'] for index, atom in list(data['atoms'].items()) if should_keep_atom(atom, united) ]
 
 def connect_lines(data):
     return ['CONECT{0:5d}{1:5d}'.format(*bond['atoms']) for bond in data['bonds']]
@@ -98,13 +98,13 @@ def nm_to_A(x):
     return 10*x
 
 def point_list(data, united=False):
-    return [ map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord']) for index, atom in data['atoms'].items() if should_keep_atom(atom, united) ]
+    return [ list(map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord'])) for index, atom in list(data['atoms'].items()) if should_keep_atom(atom, united) ]
 
 def united_hydrogens_point_list(data, united=False):
-    return [ map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord']) for index, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
+    return [ list(map(nm_to_A, atom['ocoord'] if 'ocoord' in atom else atom['coord'])) for index, atom in list(data['atoms'].items()) if not should_keep_atom(atom, united) ]
 
 def get_united_hydrogens_pdb_lines(data, united=False):
-    return [ atom['pdb'] for _, atom in data['atoms'].items() if not should_keep_atom(atom, united) ]
+    return [ atom['pdb'] for _, atom in list(data['atoms'].items()) if not should_keep_atom(atom, united) ]
 
 def permutated_list(a_list, permutation):
     on_j = lambda x:x[1]
@@ -119,33 +119,33 @@ def map_to_str(a_list):
     return [str(x) for x in a_list]
 
 def aligned_pdb_str(data, alignment, united=False):
-    from StringIO import StringIO
+    from io import StringIO
     pdb_str = StringIO()
 
     alignment_coordinates, _, united_H_coordinates, final_permutation = alignment
     heavy_atoms_pdb_lines = pdb_lines(data, united)
 
     if final_permutation:
-        heavy_atoms_pdb_lines, alignment_coordinates = map(
+        heavy_atoms_pdb_lines, alignment_coordinates = list(map(
             lambda a_list: permutated_list(a_list, final_permutation),
             (heavy_atoms_pdb_lines, alignment_coordinates),
-        )
+        ))
 
     assert len(heavy_atoms_pdb_lines) == len(alignment_coordinates)
     for line, coordinates in zip(heavy_atoms_pdb_lines, alignment_coordinates):
-        print >> pdb_str, substitute_coordinates_in(line, coordinates)
+        print(substitute_coordinates_in(line, coordinates), file=pdb_str)
 
     atom_count = 0
     for line in get_united_hydrogens_pdb_lines(data, united):
         if is_pdb_atom_line(line):
-            print >> pdb_str, substitute_coordinates_in(
+            print(substitute_coordinates_in(
                 line,
                 united_H_coordinates[atom_count],
-            )
+            ), file=pdb_str)
             atom_count += 1
 
     for connect_line in connect_lines(data):
-        print >> pdb_str, connect_line
+        print(connect_line, file=pdb_str)
 
     return pdb_str.getvalue()
 
@@ -163,4 +163,4 @@ def split_equivalence_group(eq_list):
 if __name__ == '__main__':
     from Blind_RMSD.pdb import pdb_data_for
     data = pdb_data_for(open('data/1.pdb').read())
-    print data.flavour_lists
+    print(data.flavour_lists)

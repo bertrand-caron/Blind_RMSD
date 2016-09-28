@@ -30,7 +30,7 @@ SHOULD_FAIL = {
 
 if __name__ == '__main__':
     for test_pair in TEST_PAIRS:
-        print 'Running test: {0}'.format(test_pair)
+        print('Running test: {0}'.format(test_pair))
 
         pdb_data = [pdb_str(test_ID) for test_ID in test_pair]
 
@@ -54,13 +54,13 @@ if __name__ == '__main__':
         with open(pdb_data_file(fit_file_name), 'w') as fh:
             fh.write(aligned_pdb)
 
-        print alignment_score
-        print 'Debug this alignment by running "pymol {0}"'.format(
+        print(alignment_score)
+        print('Debug this alignment by running "pymol {0}"'.format(
             ' '.join(
                 map(
                     pdb_data_file,
                     test_pair + (fit_file_name,),
                 )
             ),
-        )
-        print
+        ))
+        print()

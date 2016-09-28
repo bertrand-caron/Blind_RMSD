@@ -1,3 +1,5 @@
+from functools import reduce
+
 from atb_helpers.pdb import substitute_coordinates_in, is_pdb_atom_line
 from atb_helpers.iterables import group_by
 

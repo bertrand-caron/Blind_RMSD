@@ -1,3 +1,5 @@
+from functools import reduce
+
 from scipy.spatial.distance import cdist, pdist
 
 from Blind_RMSD.helpers.numpy_helpers import *

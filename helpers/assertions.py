@@ -130,19 +130,22 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
 
     not_mapped = set(chemical_points_lists[SECOND_STRUCTURE]) - mapped_several_times - mapped_exactly_once
 
-    print('ERROR: Points of reference structure mapped several times: {0}'.format(
-        mapped_several_times,
-    ))
-
-    for point in mapped_several_times:
-        print('    ERROR: Point {0} from reference structure was mapped to the following points of the aligned structure: {1}'.format(
-            point,
-            [point_1 for (point_1, point_2, _) in point_mapping if point_2 == point],
+    if verbosity >= 3:
+        print('ERROR: Points of reference structure mapped several times: {0}'.format(
+            mapped_several_times,
         ))
 
-    print('ERROR: Points of reference structure not mapped at all: {0}'.format(
-        not_mapped,
-    ))
+    for point in mapped_several_times:
+        if verbosity >= 3:
+            print('    ERROR: Point {0} from reference structure was mapped to the following points of the aligned structure: {1}'.format(
+                point,
+                [point_1 for (point_1, point_2, _) in point_mapping if point_2 == point],
+            ))
+
+    if verbosity >= 3:
+        print('ERROR: Points of reference structure not mapped at all: {0}'.format(
+            not_mapped,
+        ))
 
     try:
         assert mapped_several_times == set()

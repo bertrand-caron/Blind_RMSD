@@ -4,7 +4,7 @@ from os.path import abspath, join, dirname, exists
 from os import mkdir
 from scipy.spatial.distance import squareform
 
-from chemEquivalency.calcChemEquivalency import partial_mol_data_for_pdbstr
+from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
 from Blind_RMSD.helpers.exceptions import Topology_Error

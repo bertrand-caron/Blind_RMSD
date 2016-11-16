@@ -91,7 +91,7 @@ def transform_mapping(P, Q, verbosity=0):
     return transform
 
 # Align points on points
-def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[], assert_is_isometry=False, verbosity=0, pdb_writing_fct=None):
+def pointsOnPoints(point_lists, use_AD: bool = False, flavour_lists=None, show_graph: bool = False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail: bool = False, extra_points=[], assert_is_isometry: bool = False, verbosity: int = 0, pdb_writing_fct=None):
     '''
     '''
 

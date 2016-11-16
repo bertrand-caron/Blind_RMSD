@@ -12,6 +12,8 @@ from copy import deepcopy
 import shutil
 import numpy
 numpy.set_printoptions(precision=3, linewidth=300)
+from typing import List, Optional, Any
+from re import sub
 
 from Blind_RMSD.align import pointsOnPoints
 from Blind_RMSD.helpers.scoring import rmsd, ad, INFINITE_RMSD
@@ -44,7 +46,7 @@ UNITED = True
 
 faulty_inchis = []
 
-def download_molecule_files(molecule_name, inchi):
+def download_molecule_files(molecule_name: str, inchi: str):
     def sorted_mols_for_InChI(inchi):
         matches = api.Molecules.search(InChI=inchi)
         sorted_molecules = sorted(matches, key=lambda m: (not m.has_TI, m.molid))
@@ -58,16 +60,19 @@ def download_molecule_files(molecule_name, inchi):
         try:
             for extension in ['pdb_aa', 'yml']:
                 file_name = FILE_TEMPLATE.format(molecule_name=molecule_name, extension=extension, version=version)
-                if not exists( dirname(file_name)): os.mkdir( dirname(file_name) )
+                if not exists(dirname(file_name)):
+                    os.mkdir(dirname(file_name))
                 # This was a disaster waiting to happen, don't assume that the mapping molid -> temporary index is permanent (which is it not, since we are deleting molecules !)
-                if not exists(file_name) or True: molecule.download_file(fnme=file_name, atb_format=extension)
-        except Exception as e:
+                if not exists(file_name) or True:
+                    molecule.download_file(fnme=file_name, atb_format=extension)
+        except:
             directory = dirname(FILE_TEMPLATE.format(molecule_name=molecule_name, version='', extension=''))
-            if exists(directory): shutil.rmtree(directory)
-            raise e
+            if exists(directory):
+                shutil.rmtree(directory)
+            raise
     return molecules
 
-def molecule_test_alignment_generator(test_datum, verbosity=0):
+def molecule_test_alignment_generator(test_datum: Any, verbosity: int = 0):
     def test(self):
         molecule_name = test_datum['molecule_name']
         expected_rmsd = test_datum['expected_rmsd']
@@ -120,11 +125,22 @@ def molecule_test_alignment_generator(test_datum, verbosity=0):
 
         logging.info("Score after alignment: {0:.4f}".format(best_score))
         logging.info("Maximum Tolerated Score: {0:.4f}".format(expected_rmsd))
-        logging.info("To debug these results, run 'pymol {0} {1}'".format( *[file.format(extension='pdb') for file in [FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(version2, version1), extension='{extension}'), file1]] ))
-        self.assertLessEqual( best_score, expected_rmsd)
+        logging.info(
+            "To debug these results, run 'pymol {0} {1}'".format(
+                *[
+                    a_file.format(extension='pdb')
+                    for a_file in
+                    [
+                        FILE_TEMPLATE.format(molecule_name=molecule_name, version='{0}_aligned_on_{1}'.format(version2, version1), extension='{extension}'),
+                        file1,
+                    ]
+                ],
+            ),
+        )
+        self.assertLessEqual(best_score, expected_rmsd)
     return test
 
-def get_distance_matrix(test_datum, debug=False, no_delete=False, max_matrix_size=None, verbosity=0):
+def get_distance_matrix(test_datum: Any, debug: bool = False, no_delete: bool = False, max_matrix_size: Optional[Any] = None, verbosity: int = 0):
     OVERWRITE_RESULTS = True
     ONLY_DO_ONE_ROW = False
     NEXT_TEST_STR = '\n\n'
@@ -267,19 +283,19 @@ class Test_RMSD(unittest.TestCase):
         if not a <= b + numerical_tolerance:
             self.fail('%s not less than or equal to %s within %f' % (repr(a), repr(b), numerical_tolerance))
 
-def parse_command_line():
+def parse_command_line() -> Any:
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--only', nargs='*', help="Only run test cases matching these molecule names")
     parser.add_argument('--debug', help="Be overly verbose", action='store_true')
-    parser.add_argument('--verbosity', help="Verbosity level. Zero is silent.", type=int)
+    parser.add_argument('--verbosity', help="Verbosity level. Zero is silent.", type=int, default=0)
     parser.add_argument('--auto', help="Get the inchis from the API", action='store_true')
     parser.add_argument('--nodelete', help="Do not delete molecules", action='store_true')
     parser.add_argument('--max-matrix-size', help="Maximum size of the distance matrix.", dest='max_matrix_size', default=None, type=int)
-    args = parser.parse_args()
-    return args
+
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    from re import sub
     args = parse_command_line()
 
     if args.auto:

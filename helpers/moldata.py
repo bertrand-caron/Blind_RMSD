@@ -135,14 +135,14 @@ def aligned_pdb_str(data, alignment, united=False):
 
     assert len(heavy_atoms_pdb_lines) == len(alignment_coordinates)
     for line, coordinates in zip(heavy_atoms_pdb_lines, alignment_coordinates):
-        print(substitute_coordinates_in(line, coordinates), file=pdb_str)
+        print(substitute_coordinates_in(line, tuple(coordinates)), file=pdb_str)
 
     atom_count = 0
     for line in get_united_hydrogens_pdb_lines(data, united):
         if is_pdb_atom_line(line):
             print(substitute_coordinates_in(
                 line,
-                united_H_coordinates[atom_count],
+                tuple(united_H_coordinates[atom_count]),
             ), file=pdb_str)
             atom_count += 1
 

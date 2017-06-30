@@ -3,35 +3,63 @@ from collections import namedtuple
 from os.path import abspath, join, dirname, exists
 from os import mkdir
 from scipy.spatial.distance import squareform
+from functools import reduce
+from typing import NamedTuple, Any, List, Optional, Tuple
 
-from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
 from Blind_RMSD.helpers.exceptions import Topology_Error
-from functools import reduce
+
+from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr, ALL_EXCEPTION_SEARCHING_KEYWORDS
 
 UNITED_RMSD_FIT = True
 
-PDB_Data = namedtuple('PDB_Data', 'data, point_lists, flavour_lists, extra_points_lists, pdb_str')
+PDB_Data = NamedTuple(
+    'PDB_Data',
+    [
+        ('data', Any),
+        ('point_lists', Any),
+        ('flavour_lists', Any),
+        ('extra_points_lists', Any),
+        ('pdb_str', str),
+    ],
+)
 
 FAILED_ALIGNMENT_PDB_STR = ''
 
-Alignment_Results = namedtuple('Alignment_Results', 'success, error_exc')
+Alignment_Results = NamedTuple(
+    'Alignment_Results',
+    [
+        ('success', bool),
+        ('error_exc', Any),
+    ],
+)
 
 DEBUG_DIR = join(dirname(abspath(__file__)), 'debug')
 
-def pdb_data_for(pdb_str):
-    data = partial_mol_data_for_pdbstr(pdb_str).__dict__
+def pdb_data_for(pdb_str: str, exception_searching_keywords: List[str] = ALL_EXCEPTION_SEARCHING_KEYWORDS) -> PDB_Data:
+    data = partial_mol_data_for_pdbstr(pdb_str, exception_searching_keywords=exception_searching_keywords).__dict__
 
     return PDB_Data(
         data=data,
-        point_lists = point_list(data, UNITED_RMSD_FIT),
-        flavour_lists = flavour_list(data, UNITED_RMSD_FIT),
-        extra_points_lists = united_hydrogens_point_list(data, UNITED_RMSD_FIT),
-        pdb_str = pdb_str,
+        point_lists=point_list(data, UNITED_RMSD_FIT),
+        flavour_lists=flavour_list(data, UNITED_RMSD_FIT),
+        extra_points_lists=united_hydrogens_point_list(data, UNITED_RMSD_FIT),
+        pdb_str=pdb_str,
     )
 
-def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_data=None, other_pdb_data=None, io=None, soft_fail=True, assert_is_isometry=False, verbosity=0, debug=False, test_id=''):
+def align_pdb_on_pdb(
+    reference_pdb_str: Optional[str] = None,
+    other_pdb_str: Optional[str] = None,
+    reference_pdb_data: Optional[PDB_Data] = None,
+    other_pdb_data: Optional[PDB_Data] = None,
+    io: Any = None,
+    soft_fail: bool = True,
+    assert_is_isometry: bool = False,
+    verbosity: int = 0,
+    debug: bool = False,
+    test_id: str = '',
+) -> Tuple[str, float, Alignment_Results]:
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
         reference_pdb_data = pdb_data_for(reference_pdb_str)
@@ -100,7 +128,7 @@ def align_pdb_on_pdb(reference_pdb_str=None, other_pdb_str=None, reference_pdb_d
         ),
     )
 
-def rmsd_matrix_for(list_of_pdb_str):
+def rmsd_matrix_for(list_of_pdb_str: List[str]) -> Any:
     list_of_pdb_data = list(map(
         pdb_data_for,
         list_of_pdb_str,

@@ -4,7 +4,7 @@ from os.path import abspath, join, dirname, exists
 from os import mkdir
 from scipy.spatial.distance import squareform
 from functools import reduce
-from typing import NamedTuple, Any, List, Optional, Tuple
+from typing import NamedTuple, Any, List, Optional, Tuple, Dict
 
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
@@ -32,19 +32,20 @@ Alignment_Results = NamedTuple(
     [
         ('success', bool),
         ('error_exc', Any),
+        ('permutation', Dict[int, int])
     ],
 )
 
 DEBUG_DIR = join(dirname(abspath(__file__)), 'debug')
 
-def pdb_data_for(pdb_str: str, exception_searching_keywords: List[str] = ALL_EXCEPTION_SEARCHING_KEYWORDS) -> PDB_Data:
+def pdb_data_for(pdb_str: str, exception_searching_keywords: List[str] = ALL_EXCEPTION_SEARCHING_KEYWORDS, united_atom_fit: bool = UNITED_RMSD_FIT) -> PDB_Data:
     data = partial_mol_data_for_pdbstr(pdb_str, exception_searching_keywords=exception_searching_keywords).__dict__
 
     return PDB_Data(
         data=data,
-        point_lists=point_list(data, UNITED_RMSD_FIT),
-        flavour_lists=flavour_list(data, UNITED_RMSD_FIT),
-        extra_points_lists=united_hydrogens_point_list(data, UNITED_RMSD_FIT),
+        point_lists=point_list(data, united_atom_fit),
+        flavour_lists=flavour_list(data, united_atom_fit),
+        extra_points_lists=united_hydrogens_point_list(data, united_atom_fit),
         pdb_str=pdb_str,
     )
 
@@ -125,6 +126,7 @@ def align_pdb_on_pdb(
         Alignment_Results(
             success,
             format_exc(),
+            alignment.final_permutation,
         ),
     )
 

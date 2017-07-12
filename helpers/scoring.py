@@ -53,11 +53,12 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, verbosity
     if verbosity >= 5:
         print("    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0]))
     #mask_array = np.transpose(mask_array)
-    if verbosity >= 5:
+    if verbosity >= 500:
         print('    INFO: mask_array:')
         print(mask_array)
         print('    INFO: distance_matrix:')
         print(distance_matrix)
+    if verbosity >= 5:
         print('    INFO: masked distance_matrix:')
         print(distance_matrix + mask_array)
 

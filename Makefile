@@ -1,6 +1,4 @@
-PYTHONPATH = PYTHONPATH="/home/$$USER/ATB:/home/$$USER/ATB-Dependencies"
-
-PYTHON_EXEC = $(PYTHONPATH) python
+PYTHON_EXEC = PYTHONPATH=$(PYTHONPATH) python3
 
 install: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	echo 'Installed'
@@ -13,6 +11,10 @@ clean_atb_duplicates: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 test: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 	$(PYTHON_EXEC) test.py
 .PHONY: test
+
+debug:
+	$(PYTHON_EXEC) test_interactive.py --reference data/a.pdb --other data/b.pdb --N 10
+.PHONY: debug
 
 test-pymol: test
 	pymol -M testing/ethanol/*.pdb

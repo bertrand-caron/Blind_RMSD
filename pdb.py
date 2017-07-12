@@ -62,6 +62,7 @@ def align_pdb_on_pdb(
     verbosity: int = 0,
     debug: bool = False,
     test_id: str = '',
+    **kwargs: Dict[str, Any]
 ) -> Tuple[str, float, Alignment_Results]:
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
@@ -101,6 +102,7 @@ def align_pdb_on_pdb(
             soft_fail=soft_fail,
             assert_is_isometry=assert_is_isometry,
             pdb_writing_fct=pdb_writing_fct,
+            **kwargs,
         )
     except (Topology_Error, AssertionError) as e:
         raise

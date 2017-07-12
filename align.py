@@ -5,6 +5,7 @@ from copy import deepcopy
 from pprint import PrettyPrinter
 from collections import namedtuple
 from typing import Optional, Any
+from functools import reduce
 
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_coords, on_flavour, ELEMENT_NUMBERS
@@ -22,8 +23,9 @@ on_third_object, on_fourth_object = lambda x: x[2], lambda x: x[3]
 on_second_object_and_flavour = lambda grouped_flavours, x: str(x[1]) + str(len(grouped_flavours[ x[2] ]))
 
 # Kabsch Algorithm options
-DEFAULT_MIN_N_UNIQUE_POINTS = 5
-MAX_N_COMPLEXITY = 10 # Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - MIN_N_UNIQUE_POINTS)
+DEFAULT_FLAVOURED_KABSCH_MIN_N_UNIQUE_POINTS = 5
+# Maximum number of permutations is MAX_N_COMPLEXITY^(N_UNIQUE_POINTS - DEFAULT_FLAVOURED_KABSCH_MIN_N_UNIQUE_POINTS)
+MAX_N_COMPLEXITY = 10
 
 ALLOW_SHORTCUTS = False
 DEFAULT_SCORE_TOLERANCE = 0.01
@@ -92,7 +94,19 @@ def transform_mapping(P: Array, Q: Array, verbosity: int = 0):
     return transform
 
 # Align points on points
-def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, soft_fail=False, extra_points=[], assert_is_isometry=False, verbosity=0, pdb_writing_fct=None):
+def pointsOnPoints(
+    point_lists,
+    use_AD=False,
+    flavour_lists=None,
+    show_graph=False,
+    score_tolerance=DEFAULT_SCORE_TOLERANCE,
+    soft_fail=False,
+    extra_points=[],
+    assert_is_isometry=False,
+    verbosity=0,
+    pdb_writing_fct=None,
+    flavoured_kabsch_min_n_unique_points: int = DEFAULT_FLAVOURED_KABSCH_MIN_N_UNIQUE_POINTS,
+):
     '''
     '''
 
@@ -332,6 +346,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
                 show_graph=show_graph,
                 verbosity=verbosity,
                 dump_pdb=dump_pdb,
+                flavoured_kabsch_min_n_unique_points=flavoured_kabsch_min_n_unique_points,
             ),
         )
 
@@ -507,7 +522,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function,
             r = rotmat(*reversed(reference_vectors))
 
             if verbosity >= 4:
-                print("    INFO: Rotation parameters: {0} deg, axis {1}".format(
+                print("INFO: Rotation parameters: {0} deg, axis {1}".format(
                     m2rotaxis(r)[0] * 180 / np.pi,
                     m2rotaxis(r)[1],
                 ))
@@ -534,7 +549,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function,
 
             if best_score <= score_tolerance and ALLOW_SHORTCUTS:
                 if verbosity >= 1:
-                    print("    INFO: Found a really good match (Score={0}) worth aborting now. Exiting successfully.".format(
+                    print("INFO: Found a really good match (Score={0}) worth aborting now. Exiting successfully.".format(
                         best_score,
                     ))
                 break
@@ -542,7 +557,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function,
         break
 
     if verbosity >= 2:
-        print("    INFO: Minimum Score from bruteforce algorithm is: {0}".format(best_score))
+        print("INFO: Minimum Score from bruteforce algorithm is: {0}".format(best_score))
 
     return Alignment_Method_Result(
         'bruteforce_aligning_vectors',
@@ -568,7 +583,17 @@ def get_chemical_points_lists(point_lists, flavour_lists, has_flavours):
     ))
     return chemical_points_lists
 
-def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, extra_points=[], verbosity=0, dump_pdb=DUMMY_DUMP_PDB):
+def flavoured_kabsch_method(
+    point_lists,
+    distance_array_function,
+    flavour_lists=None,
+    show_graph=False,
+    score_tolerance=DEFAULT_SCORE_TOLERANCE,
+    extra_points=[],
+    verbosity=0,
+    dump_pdb=DUMMY_DUMP_PDB,
+    flavoured_kabsch_min_n_unique_points: int = DEFAULT_FLAVOURED_KABSCH_MIN_N_UNIQUE_POINTS,
+):
     point_arrays = list(map(
         array,
         point_lists,
@@ -587,15 +612,15 @@ def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=
             print('INFO: POINT ARRAYS WERE CONSTANT')
 
     if verbosity >= 5:
-        print('    INFO: {0}'.format(dict(has_flavours=has_flavours)))
+        print('INFO: {0}'.format(dict(has_flavours=has_flavours)))
 
     MIN_N_UNIQUE_POINTS = min(
-        DEFAULT_MIN_N_UNIQUE_POINTS,
+        flavoured_kabsch_min_n_unique_points,
         len(point_lists[0]),
     )
 
     if verbosity >= 3:
-        print("    INFO: Found flavours. Trying flavoured {0}-point Kabsch algorithm on flavoured types ...".format(MIN_N_UNIQUE_POINTS))
+        print("INFO: Found flavours. Trying flavoured {0}-point Kabsch algorithm on flavoured types ...".format(MIN_N_UNIQUE_POINTS))
 
     grouped_flavours_lists = list(map(
         lambda index: group_by(flavour_lists[index], lambda x:x ),
@@ -656,11 +681,12 @@ and
     ))
 
     if verbosity >= 3:
-        print("    INFO: Unique groups found based on flavours: {0}".format(unique_points_lists[0]))
+        print('INFO: Unique groups found based on flavours:')
+        pp(unique_points_lists[0])
 
     if len(unique_points_lists[FIRST_STRUCTURE]) < MIN_N_UNIQUE_POINTS:
         if verbosity >= 3:
-            print("    Warning: Unable to find at least {N} unique point with the flavoured points provided. Trying to disambiguate enough points to make a fit.".format(N=MIN_N_UNIQUE_POINTS))
+            print("WARNING: Unable to find at least {N} unique point with the flavoured points provided. Trying to disambiguate enough points to make a fit...".format(N=MIN_N_UNIQUE_POINTS))
 
         missing_points = MIN_N_UNIQUE_POINTS - len(unique_points_lists[FIRST_STRUCTURE])
 
@@ -682,7 +708,7 @@ and
 
         if N_ambiguous_points < missing_points:
             if verbosity >= 1:
-                print("    ERROR: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(
+                print("ERROR: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(
                     P=N_ambiguous_points,
                     M=len(unique_points_lists[0]),
                     N=MIN_N_UNIQUE_POINTS,
@@ -699,7 +725,7 @@ and
             )
 
         if verbosity >= 2:
-            print("    INFO: Found enough point ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points))
+            print("INFO: Found enough additional points ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points))
 
         permutations_list = []
         atom_indexes = lambda chemical_points: [chemical_point.index for chemical_point in chemical_points]
@@ -720,25 +746,28 @@ and
                 ambiguous_points += N_list[-1]
 
         if verbosity >= 3:
-            print("    INFO: Ambiguous groups are: {0} (number of points taken in each group: {1})".format(
-                ambiguous_point_groups[0],
+            print('INFO: Ambiguous groups are:')
+            pp(ambiguous_point_groups[0])
+            print('(number of points taken in each group: {0})'.format(
                 N_list,
             ))
 
         permutation_lists = list(map(
-            lambda group, N: permutations(atom_indexes(group), r=N),
+            lambda group, N: list(permutations(atom_indexes(group), r=N)),
             ambiguous_point_groups[FIRST_STRUCTURE],
             N_list,
         ))
 
         complete_permutation_list = product(*permutation_lists)
+        total_number_permutation = reduce(lambda acc, e: acc * len(e), permutation_lists, 1)
 
         for (group, N) in zip(ambiguous_point_groups[SECOND_STRUCTURE], N_list):
             unique_points_lists[SECOND_STRUCTURE] += group[0:N]
 
         best_match, best_score = [None]*2
-        for (i, group_permutations) in enumerate(complete_permutation_list):
+        for (i, group_permutations) in enumerate(complete_permutation_list, start=1):
             ambiguous_unique_points = [deepcopy(unique_points_lists[FIRST_STRUCTURE])]
+            print()
 
             for group in group_permutations:
                 for index in group:
@@ -746,10 +775,11 @@ and
                     ambiguous_unique_points[FIRST_STRUCTURE].append(new_point)
 
             if verbosity >= 5:
-                print('        INFO: Attempting a fit between points\n{0}\nand\n{1}'.format(
-                    ambiguous_unique_points[FIRST_STRUCTURE],
-                    unique_points_lists[SECOND_STRUCTURE],
-                ))
+                print('INFO: ({0}/{1}) Attempting a fit between points:'.format(i, total_number_permutation))
+                pp(ambiguous_unique_points[FIRST_STRUCTURE])
+                print('and:')
+                pp(unique_points_lists[SECOND_STRUCTURE])
+                print()
 
             do_assert(
                 list(map(on_flavour, ambiguous_unique_points[0])) == list(map(on_flavour, unique_points_lists[SECOND_STRUCTURE])),
@@ -792,7 +822,7 @@ and
                 best_match, best_score, best_transform = kabsched_list1, current_score, transform
 
                 if verbosity >= 5:
-                    print("    INFO: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score))
+                    print("INFO: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score))
 
                 if current_score <= score_tolerance:
                     return Alignment_Method_Result(
@@ -806,7 +836,7 @@ and
                     )
 
         if verbosity >= 5:
-            print("    INFO: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(
+            print("INFO: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(
                 MIN_N_UNIQUE_POINTS,
                 best_score,
             ))
@@ -868,7 +898,7 @@ and
         )
 
         if verbosity >= 2:
-            print("    INFO: Klabsch algorithm on unique flavours found a better match with a Score of {0}".format(
+            print("INFO: Klabsch algorithm on unique flavours found a better match with a Score of {0}".format(
                 current_score,
             ))
 
@@ -906,7 +936,7 @@ def lucky_kabsch_method(point_lists, distance_array_function, flavour_lists=None
     )
 
     if verbosity >= 1:
-        print("    INFO: Minimum Score from lucky Kabsch method is: {0}".format(
+        print("INFO: Minimum Score from lucky Kabsch method is: {0}".format(
             current_score,
         ))
 
@@ -958,13 +988,13 @@ def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists
         if (best_score is None) or current_score <= best_score:
             best_match, best_score = kabsched_list1, current_score
             if verbosity >= 3:
-                print("    INFO: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(
+                print("INFO: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(
                     best_score=best_score,
                     N=N_BRUTEFORCE_KABSCH,
                 ))
 
     if verbosity >= 3:
-        print("    INFO: Minimum Score from bruteforce Kabsch method is: {0}".format(
+        print("INFO: Minimum Score from bruteforce Kabsch method is: {0}".format(
             best_score,
         ))
 

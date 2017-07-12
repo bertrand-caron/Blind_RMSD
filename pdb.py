@@ -8,7 +8,7 @@ from typing import NamedTuple, Any, List, Optional, Tuple, Dict
 
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
-from Blind_RMSD.helpers.exceptions import Topology_Error
+from Blind_RMSD.helpers.exceptions import Topology_Error, Permutation_Not_Found_Error
 
 from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr, ALL_EXCEPTION_SEARCHING_KEYWORDS
 
@@ -22,6 +22,7 @@ PDB_Data = NamedTuple(
         ('flavour_lists', Any),
         ('extra_points_lists', Any),
         ('pdb_str', str),
+        ('united_atom_fit', bool),
     ],
 )
 
@@ -47,6 +48,7 @@ def pdb_data_for(pdb_str: str, exception_searching_keywords: List[str] = ALL_EXC
         flavour_lists=flavour_list(data, united_atom_fit),
         extra_points_lists=united_hydrogens_point_list(data, united_atom_fit),
         pdb_str=pdb_str,
+        united_atom_fit=united_atom_fit,
     )
 
 def align_pdb_on_pdb(
@@ -69,6 +71,8 @@ def align_pdb_on_pdb(
     if other_pdb_data is None:
         other_pdb_data = pdb_data_for(other_pdb_str)
 
+    assert len(set([pdb_data.united_atom_fit for pdb_data in (reference_pdb_data, other_pdb_data)])) == 1, [pdb_data.united_atom_fit for pdb_data in (reference_pdb_data, other_pdb_data)]
+
     if debug:
         def pdb_writing_fct(alignment, file_name):
             pdb_path = join(DEBUG_DIR, test_id, file_name)
@@ -82,7 +86,7 @@ def align_pdb_on_pdb(
                     aligned_pdb_str(
                         other_pdb_data.data,
                         alignment,
-                        UNITED_RMSD_FIT,
+                        reference_pdb_data.united_atom_fit,
                     )
                 )
     else:
@@ -114,7 +118,7 @@ def align_pdb_on_pdb(
         success = False
     else:
         try:
-            final_aligned_pdb_str = aligned_pdb_str(other_pdb_data.data, alignment, UNITED_RMSD_FIT)
+            final_aligned_pdb_str = aligned_pdb_str(other_pdb_data.data, alignment, reference_pdb_data.united_atom_fit)
             success = True
         except AssertionError:
             final_aligned_pdb_str = other_pdb_data.pdb_str

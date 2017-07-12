@@ -1,9 +1,11 @@
 from functools import reduce
+from typing import Optional, List, Tuple
 
 from scipy.spatial.distance import cdist, pdist
 
 from Blind_RMSD.helpers.numpy_helpers import *
 from Blind_RMSD.helpers.moldata import group_by
+from Blind_RMSD.helpers.exceptions import Permutation_Not_Found_Error
 
 BYPASS_SILENT = False
 
@@ -75,7 +77,7 @@ def assert_blind_rmsd_symmetry(array_1, array_2, distance_function, verbosity=1)
         soft_fail=True,
     )
 
-def assert_found_permutation_array(array1, array2, chemical_points_lists=None, mask_array=None, hard_fail=False, verbosity=0):
+def assert_found_permutation_array(array1, array2, chemical_points_lists=None, mask_array=None, hard_fail=False, verbosity=0) -> Optional[List[Tuple[int, int]]]:
     from Blind_RMSD.align import FIRST_STRUCTURE, SECOND_STRUCTURE
 
     distance_matrix = get_distance_matrix(array1, array2)
@@ -148,10 +150,12 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
         ))
 
     try:
-        assert mapped_several_times == set()
+        assert mapped_several_times == set(), mapped_several_times
     except AssertionError:
         if hard_fail:
-            raise
+            raise Permutation_Not_Found_Error(mapped_several_times)
+        else:
+            return None
 
     index_permutation = [(point_1.index, point_2.index) for (point_1, point_2, _) in point_mapping]
 

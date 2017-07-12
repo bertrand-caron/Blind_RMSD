@@ -11,7 +11,7 @@ class ChemicalPoint:
         self.flavour = flavour
 
     def __str__(self):
-        return '{{index={index}, flavour={flavour}, x={x}}}'.format(
+        return 'Chemical_Point(index={index}, flavour={flavour}, x={x})'.format(
             index=self.index,
             flavour=self.flavour,
             x=self.x,

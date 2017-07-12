@@ -1,9 +1,10 @@
-from Blind_RMSD.helpers.numpy_helpers import *
+from Blind_RMSD.helpers.numpy_helpers import np, sqrt, mean, square, cdist, get_distance_matrix, Array, array
 from itertools import product, groupby, permutations
 from functools import partial
 from copy import deepcopy
 from pprint import PrettyPrinter
 from collections import namedtuple
+from typing import Optional, Any
 
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_coords, on_flavour, ELEMENT_NUMBERS
@@ -29,7 +30,7 @@ DEFAULT_SCORE_TOLERANCE = 0.01
 
 DISABLE_BRUTEFORCE_METHOD = True
 
-ORIGIN, ZERO_VECTOR = np.array([0.,0.,0.]), np.array([0.,0.,0.])
+ORIGIN, ZERO_VECTOR = array([0.,0.,0.]), array([0.,0.,0.])
 
 DEFAULT_MATRICES = (np.identity(3), ZERO_VECTOR, ZERO_VECTOR)
 NO_TRANSFORM = lambda point_array: point_array
@@ -49,7 +50,7 @@ NULL_PDB_WRITING_FCT = lambda alignment, file_name: None
 
 DUMMY_DUMP_PDB = lambda point_list, transform, file_name: None
 
-def transform_mapping(P, Q, verbosity=0):
+def transform_mapping(P: Array, Q: Array, verbosity: int = 0):
     assert len(P) == len(Q)
 
     old_P, old_Q = list(map(
@@ -138,7 +139,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         )
 
     point_arrays = list(map(
-        np.array,
+        array,
         point_lists + [extra_points],
     ))
     center_of_geometries = list(map(
@@ -247,6 +248,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             chemical_points_lists=chemical_points_lists,
             mask_array=mask_array,
             verbosity=verbosity,
+            hard_fail=not soft_fail,
         )
 
     # Break now if there are no rotational component
@@ -267,6 +269,7 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
             chemical_points_lists=chemical_points_lists,
             mask_array=mask_array,
             verbosity=verbosity,
+            hard_fail=not soft_fail,
         )
 
     method_results = {}
@@ -431,9 +434,20 @@ def pointsOnPoints(point_lists, use_AD=False, flavour_lists=None, show_graph=Fal
         mask_array=mask_array,
         verbosity=verbosity,
         dump_pdb=dump_pdb,
+        hard_fail=not soft_fail,
     )
 
-def formatted_and_validated_Aligment(aligned_point_array, reference_point_array, distance_array_function, chemical_points_lists=None, aligned_extra_points=None, mask_array=None, verbosity=0, dump_pdb=DUMMY_DUMP_PDB):
+def formatted_and_validated_Aligment(
+    aligned_point_array: Array,
+    reference_point_array: Array,
+    distance_array_function: Any,
+    chemical_points_lists: Optional[Any] = None,
+    aligned_extra_points: Optional[Any] = None,
+    mask_array=None,
+    verbosity=0,
+    dump_pdb=DUMMY_DUMP_PDB,
+    hard_fail: bool = False,
+):
     assert_array_equal(*
         list(map(center_of_geometry, (aligned_point_array, reference_point_array,))),
         message="{0} != {1}"
@@ -451,6 +465,7 @@ def formatted_and_validated_Aligment(aligned_point_array, reference_point_array,
         chemical_points_lists=chemical_points_lists,
         mask_array=mask_array if mask_array is not None else None,
         verbosity=verbosity,
+        hard_fail=hard_fail,
     )
 
     if final_permutation is not None:
@@ -555,7 +570,7 @@ def get_chemical_points_lists(point_lists, flavour_lists, has_flavours):
 
 def flavoured_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, extra_points=[], verbosity=0, dump_pdb=DUMMY_DUMP_PDB):
     point_arrays = list(map(
-        np.array,
+        array,
         point_lists,
     ))
     has_flavours= bool(flavour_lists)
@@ -871,7 +886,7 @@ and
 
 def lucky_kabsch_method(point_lists, distance_array_function, flavour_lists=None, show_graph=False, score_tolerance=DEFAULT_SCORE_TOLERANCE, verbosity=0):
     point_arrays = list(map(
-        np.array,
+        array,
         point_lists,
     ))
 
@@ -907,7 +922,7 @@ def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists
     N_BRUTEFORCE_KABSCH = 4
 
     point_arrays = list(map(
-        np.array,
+        array,
         point_lists,
     ))
 
@@ -967,7 +982,7 @@ def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists
 
 def rotation_matrix_kabsch_on_points(points1, points2):
     # Align those points using Kabsch algorithm
-    P, Q = np.array(points1), np.array(points2)
+    P, Q = array(points1), array(points2)
     #print P
     #print Q
     Pc, Qc = centroid(P), centroid(Q)
@@ -986,5 +1001,8 @@ def do_show_graph(array_list):
 def distance(point1, point2):
     return np.linalg.norm(point1 - point2)
 
-def center_of_geometry(point_array):
-    return np.mean(point_array, axis=0)
+def center_of_geometry(point_array: Array):
+    if len(point_array) > 0:
+        return np.mean(point_array, axis=0)
+    else:
+        return 0.0

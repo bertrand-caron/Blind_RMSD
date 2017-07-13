@@ -15,6 +15,8 @@ from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr
 
 UNITED_RMSD_FIT = True
 
+PDB, RMSD = str, float
+
 PDB_Data = NamedTuple(
     'PDB_Data',
     [
@@ -22,7 +24,7 @@ PDB_Data = NamedTuple(
         ('point_lists', Any),
         ('flavour_lists', Any),
         ('extra_points_lists', Any),
-        ('pdb_str', str),
+        ('pdb_str', PDB),
         ('united_atom_fit', bool),
     ],
 )
@@ -34,7 +36,9 @@ Alignment_Results = NamedTuple(
     [
         ('success', bool),
         ('error_exc', Any),
-        ('permutation', Dict[int, int])
+        ('permutation', Dict[int, int]),
+        ('total_fit_points', int),
+        ('kabsch_fit_point', int),
     ],
 )
 
@@ -63,17 +67,18 @@ def align_pdb_on_pdb(
     verbosity: int = 0,
     debug: bool = False,
     test_id: str = '',
+    united_atom_fit: bool = UNITED_RMSD_FIT,
     **kwargs: Dict[str, Any]
-) -> Tuple[str, float, Alignment_Results]:
+) -> Tuple[PDB, RMSD, Alignment_Results]:
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
-        reference_pdb_data = pdb_data_for(reference_pdb_str)
+        reference_pdb_data = pdb_data_for(reference_pdb_str, united_atom_fit=united_atom_fit)
 
     assert other_pdb_str is not None or other_pdb_data is not None
     if other_pdb_data is None:
-        other_pdb_data = pdb_data_for(other_pdb_str)
+        other_pdb_data = pdb_data_for(other_pdb_str, united_atom_fit=united_atom_fit)
 
-    assert len(set([pdb_data.united_atom_fit for pdb_data in (reference_pdb_data, other_pdb_data)])) == 1, [pdb_data.united_atom_fit for pdb_data in (reference_pdb_data, other_pdb_data)]
+    assert len(set([pdb_data.united_atom_fit for pdb_data in (reference_pdb_data, other_pdb_data)])) == 1, [pdb_data for pdb_data in (reference_pdb_data, other_pdb_data)]
 
     if debug:
         def pdb_writing_fct(alignment, file_name):
@@ -131,9 +136,11 @@ def align_pdb_on_pdb(
         final_aligned_pdb_str,
         alignment.score,
         Alignment_Results(
-            success,
-            format_exc(),
-            alignment.final_permutation,
+            success=success,
+            error_exc=format_exc(),
+            permutation=alignment.final_permutation,
+            total_fit_points=None,
+            kabsch_fit_point=None,
         ),
     )
 

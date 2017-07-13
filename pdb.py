@@ -6,6 +6,7 @@ from scipy.spatial.distance import squareform
 from functools import reduce
 from typing import NamedTuple, Any, List, Optional, Tuple, Dict
 
+from Blind_RMSD.helpers.log import log
 from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str, united_hydrogens_point_list
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
 from Blind_RMSD.helpers.exceptions import Topology_Error, Permutation_Not_Found_Error
@@ -81,7 +82,7 @@ def align_pdb_on_pdb(
             if not exists(dirname(pdb_path)):
                 mkdir(dirname(pdb_path))
 
-            print('    PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score))
+            log.debug('PDB Writing Function: Dumping alignment to {0} (score={1})'.format(file_name, alignment.score))
             with open(pdb_path, 'w') as fh:
                 fh.write(
                     aligned_pdb_str(
@@ -109,7 +110,7 @@ def align_pdb_on_pdb(
 #    except Exception as e:
 #        alignment = FAILED_ALIGNMENT
 #        if io:
-#            print >> io, '<pre>{0}</pre>'.format(e)
+#            print('<pre>{0}</pre>'.format(e), file=io)
 #        if not soft_fail:
 #            raise
 

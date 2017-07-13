@@ -3,6 +3,7 @@ from typing import Optional, List, Tuple
 
 from scipy.spatial.distance import cdist, pdist
 
+from Blind_RMSD.helpers.log import log, pformat
 from Blind_RMSD.helpers.numpy_helpers import *
 from Blind_RMSD.helpers.moldata import group_by
 from Blind_RMSD.helpers.exceptions import Permutation_Not_Found_Error
@@ -18,11 +19,11 @@ def do_assert(something, error_msg, exception_type=None, verbosity=0):
         if exception_type is None:
             raise
         else:
-            raise exception_type(error_msg)
+            raise exception_type('ERROR: ' + error_msg)
 
 def do_assert_equal(a, b, error_msg, exception_type=None, soft_fail=False, verbosity=0):
     if verbosity >= 3:
-        print('INFO: Asserting that {0} == {1}'.format(a, b))
+        log.debug('Asserting that {0} == {1}'.format(a, b))
     try:
         do_assert(
             (a == b if type(a) == float else is_close(a, b)),
@@ -57,16 +58,17 @@ def do_assert_is_isometry(array_1, array_2, atol=1E-8, rtol=1E-5, success_msg='S
             rtol=rtol,
         )
         if verbosity >= 3:
-            print(success_msg)
+            log.debug(success_msg)
     except:
-        print('ERROR: Transformation was not isometric')
+        log.error('ERROR: Transformation was not isometric')
         if verbosity >= 5:
-            print(distance_matrix(array_1))
-            print(distance_matrix(array_2))
+            log.debug(distance_matrix(array_1))
+            log.debug(distance_matrix(array_2))
 
             for i, (d_1, d_2) in enumerate(zip(distance_matrix(array_1), distance_matrix(array_2))):
                 if not is_close(d_1, d_2, atol=atol, rtol=rtol):
-                    print(i, d_1 - d_2)
+                    log.debug(i, d_1 - d_2)
+        raise
 
 def assert_blind_rmsd_symmetry(array_1, array_2, distance_function, verbosity=1):
     do_assert_equal(
@@ -85,9 +87,9 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
     if mask_array is not None:
         distance_matrix += mask_array
 
-    if verbosity >=5:
-        print('Distance matrix for permutation array:')
-        print(distance_matrix)
+    if verbosity >= 5:
+        log.debug('Distance matrix for permutation array:')
+        log.debug(distance_matrix)
 
     dim = distance_matrix.shape
     assert dim[0] == dim[1]
@@ -111,6 +113,10 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
 
     point_mapping = [closest_point_in_second_structure_to(i) for i in range(dim[0])]
 
+    if verbosity >= 5:
+        log.debug('point_mapping:')
+        log.debug(pformat(point_mapping))
+
     def mapped_with_condition(condition = lambda group: len(group) == 1):
         return set(
             reduce(
@@ -133,19 +139,19 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
     not_mapped = set(chemical_points_lists[SECOND_STRUCTURE]) - mapped_several_times - mapped_exactly_once
 
     if verbosity >= 3:
-        print('ERROR: Points of reference structure mapped several times: {0}'.format(
+        log.error('Points of reference structure mapped several times: {0}'.format(
             mapped_several_times,
         ))
 
     for point in mapped_several_times:
         if verbosity >= 3:
-            print('    ERROR: Point {0} from reference structure was mapped to the following points of the aligned structure: {1}'.format(
+            log.error('Point {0} from reference structure was mapped to the following points of the aligned structure: {1}'.format(
                 point,
                 [point_1 for (point_1, point_2, _) in point_mapping if point_2 == point],
             ))
 
     if verbosity >= 3:
-        print('ERROR: Points of reference structure not mapped at all: {0}'.format(
+        log.error('Points of reference structure not mapped at all: {0}'.format(
             not_mapped,
         ))
 
@@ -160,6 +166,6 @@ def assert_found_permutation_array(array1, array2, chemical_points_lists=None, m
     index_permutation = [(point_1.index, point_2.index) for (point_1, point_2, _) in point_mapping]
 
     if verbosity >= 3:
-        print('INFO: Found a permutation between points of the aligned structure and points of the reference structure: {0} and {1}'.format(*list(zip(*index_permutation))))
+        log.debug('INFO: Found a permutation between points of the aligned structure and points of the reference structure: {0} and {1}'.format(*list(zip(*index_permutation))))
 
     return index_permutation

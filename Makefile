@@ -13,7 +13,7 @@ test: helpers/Vector.py lib/charnley_rmsd/kabsch.py pmx testing
 .PHONY: test
 
 debug:
-	$(PYTHON_EXEC) test_interactive.py --reference data/a.pdb --other data/b.pdb --N 10
+	$(PYTHON_EXEC) test_interactive.py --reference data/a.pdb --other data/c.pdb --N 10
 .PHONY: debug
 
 test-pymol: test

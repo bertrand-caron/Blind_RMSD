@@ -2,11 +2,11 @@ from Blind_RMSD.helpers.numpy_helpers import np, sqrt, mean, square, cdist, get_
 from itertools import product, groupby, permutations
 from functools import partial
 from copy import deepcopy
-from pprint import PrettyPrinter
 from collections import namedtuple
 from typing import Optional, Any
 from functools import reduce
 
+from Blind_RMSD.helpers.log import log, pformat
 from Blind_RMSD.helpers.Vector import Vector, rotmat, m2rotaxis
 from Blind_RMSD.helpers.ChemicalPoint import ChemicalPoint, on_coords, on_flavour, ELEMENT_NUMBERS
 from Blind_RMSD.helpers.moldata import group_by
@@ -15,8 +15,6 @@ from Blind_RMSD.helpers.scoring import rmsd_array, ad_array, rmsd, ad, rmsd_arra
 from Blind_RMSD.helpers.assertions import do_assert, assert_array_equal, assert_found_permutation_array, do_assert_is_isometry, distance_matrix, pdist, is_close, assert_blind_rmsd_symmetry
 from Blind_RMSD.helpers.exceptions import Topology_Error
 from Blind_RMSD.helpers.kabsch import kabsch, centroid, Kabsch_Error
-
-pp = PrettyPrinter(indent=2).pprint
 
 on_self, on_first_object, on_second_object = lambda x: x, lambda x: x[0], lambda x: x[1]
 on_third_object, on_fourth_object = lambda x: x[2], lambda x: x[3]
@@ -70,7 +68,7 @@ def transform_mapping(P: Array, Q: Array, verbosity: int = 0):
                 assert_array_equal(
                     center_of_geometry(point_array),
                     center_of_geometry(new_point_array),
-                    'ERROR: {0} != {1}'.format(
+                    '{0} != {1}'.format(
                         center_of_geometry(point_array),
                         center_of_geometry(new_point_array),
                     ),
@@ -79,10 +77,10 @@ def transform_mapping(P: Array, Q: Array, verbosity: int = 0):
                 )
             except:
                 if verbosity >= 5:
-                    print(center_of_geometry(point_array))
-                    print(center_of_geometry(new_point_array))
-                    print(Pc)
-                    print(Qc)
+                    log.debug(center_of_geometry(point_array))
+                    log.debug(center_of_geometry(new_point_array))
+                    log.debug(Pc)
+                    log.debug(Qc)
                 raise
 
         return new_point_array
@@ -113,11 +111,8 @@ def pointsOnPoints(
     # Initializers
     has_flavours = True if flavour_lists and all(flavour_lists) else False
 
-    if verbosity >= 1:
-        print()
-
     if verbosity >= 3:
-        print('INFO: {0}'.format(
+        log.debug('{0}'.format(
             dict(has_flavours=has_flavours),
         ))
 
@@ -133,22 +128,22 @@ def pointsOnPoints(
     # Assert that the fitting make sense
     do_assert(
         len(point_lists[FIRST_STRUCTURE]) == len(point_lists[SECOND_STRUCTURE]),
-        "ERROR: Size of point lists doesn't match: {0} and {1}".format(*list(map(len, point_lists))),
+        "Size of point lists doesn't match: {0} and {1}".format(*list(map(len, point_lists))),
         exception_type=Topology_Error,
     )
     if has_flavours:
         do_assert(
             len(flavour_lists[FIRST_STRUCTURE]) == len(flavour_lists[SECOND_STRUCTURE]),
-            "ERROR: Size of flavour lists doesn't match: {0} and {1}".format(*list(map(len, flavour_lists))),
+            "Size of flavour lists doesn't match: {0} and {1}".format(*list(map(len, flavour_lists))),
             exception_type=Topology_Error,
         )
         do_assert(
             len(flavour_lists[FIRST_STRUCTURE]) == len(point_lists[SECOND_STRUCTURE]),
-            "ERROR: Size of flavour lists doesn't match size of point lists: {0} and {1}".format(*list(map(len, [flavour_lists[FIRST_STRUCTURE], point_lists[SECOND_STRUCTURE]]))),
+            "Size of flavour lists doesn't match size of point lists: {0} and {1}".format(*list(map(len, [flavour_lists[FIRST_STRUCTURE], point_lists[SECOND_STRUCTURE]]))),
         )
         do_assert(
             sorted(flavour_lists[FIRST_STRUCTURE]) == sorted(flavour_lists[SECOND_STRUCTURE]),
-            "ERROR: There is not a one to one mapping between the sorted flavour of the sets: {0} and {1}".format(*list(map(sorted, flavour_lists))),
+            "There is not a one to one mapping between the sorted flavour of the sets: {0} and {1}".format(*list(map(sorted, flavour_lists))),
             exception_type=Topology_Error,
         )
 
@@ -162,9 +157,9 @@ def pointsOnPoints(
     ))
 
     if verbosity >= 4:
-        print(point_arrays[0])
-        print(point_arrays[1])
-        print(point_arrays[2])
+        log.debug(point_arrays[0])
+        log.debug(point_arrays[1])
+        log.debug(point_arrays[2])
 
     if has_flavours:
         grouped_flavours_lists = list(map(
@@ -195,11 +190,11 @@ def pointsOnPoints(
                 dumb_array[i, j] = "{0} =?= {1}".format(chemical_point_0.flavour, chemical_point_1.flavour)
 
         if verbosity >= 5:
-            print('INFO: chemical_points_lists:')
-            print(chemical_points_lists)
+            log.debug('chemical_points_lists:')
+            log.debug(chemical_points_lists)
         if verbosity >= 5:
-            print('INFO: dumb_array:')
-            print(dumb_array)
+            log.debug('dumb_array:')
+            log.debug(dumb_array)
     else:
         mask_array = None
         chemical_points_lists = None
@@ -269,11 +264,11 @@ def pointsOnPoints(
     current_score = distance_array_function(*centered_point_arrays[FIRST_STRUCTURE:UNTIL_SECOND_STRUCTURE])
 
     if verbosity >= 2:
-        print('INFO: {0}'.format(dict(current_score=current_score)))
+        log.debug('{0}'.format(dict(current_score=current_score)))
 
     if current_score <= score_tolerance and ALLOW_SHORTCUTS:
         if verbosity >= 1:
-            print("INFO: A simple translation was enough to match the two set of points. Exiting successfully.")
+            log.debug('A simple translation was enough to match the two set of points. Exiting successfully.')
 
         return formatted_and_validated_Aligment(
             center_on_second_structure(centered_point_arrays[FIRST_STRUCTURE]),
@@ -357,11 +352,11 @@ def pointsOnPoints(
     best_match, best_score = method_results[best_method]['array'], method_results[best_method]['score']
 
     if verbosity >= 1:
-        print("INFO: Scores of methods are: {0}".format(
+        log.debug("Scores of methods are: {0}".format(
             dict([ (k, v['score']) for (k,v) in list(method_results.items()) if 'score' in v]),
         ))
     if verbosity >= 1:
-        print("INFO: Best score was achieved with method: {0}".format(best_method))
+        log.debug("Best score was achieved with method: {0}".format(best_method))
 
     if has_extra_points:
         transform_function = method_results[best_method]['transform']
@@ -373,7 +368,7 @@ def pointsOnPoints(
                     distance(center_of_geometries[FIRST_STRUCTURE], center_of_geometries[EXTRA_POINTS]),
                     distance(center_of_geometry(best_match), center_of_geometry(aligned_extra_points_array)),
                 ),
-                'ERROR: EXTRA POINTS WERE SHUFFLED AROUND {0} ({1}) {2} ({3})'.format(
+                'EXTRA POINTS WERE SHUFFLED AROUND {0} ({1}) {2} ({3})'.format(
                     center_of_geometries[FIRST_STRUCTURE] - center_of_geometries[EXTRA_POINTS],
                     distance(center_of_geometries[FIRST_STRUCTURE], center_of_geometries[EXTRA_POINTS]),
                     center_of_geometry(best_match) - center_of_geometry(aligned_extra_points_array),
@@ -382,8 +377,8 @@ def pointsOnPoints(
             )
         except:
             if verbosity >= 3:
-                print(center_of_geometries[FIRST_STRUCTURE], center_of_geometries[EXTRA_POINTS], distance(center_of_geometries[FIRST_STRUCTURE], center_of_geometries[EXTRA_POINTS]))
-                print(center_of_geometry(best_match), center_of_geometry(aligned_extra_points_array), distance(center_of_geometry(best_match), center_of_geometry(aligned_extra_points_array)))
+                log.debug(center_of_geometries[FIRST_STRUCTURE], center_of_geometries[EXTRA_POINTS], distance(center_of_geometries[FIRST_STRUCTURE], center_of_geometries[EXTRA_POINTS]))
+                log.debug(center_of_geometry(best_match), center_of_geometry(aligned_extra_points_array), distance(center_of_geometry(best_match), center_of_geometry(aligned_extra_points_array)))
             raise
     else:
         aligned_extra_points_array = None
@@ -404,13 +399,13 @@ def pointsOnPoints(
         # Make sure the correction has not distorted the inter-distances between EXTRA_POINTS and FIRST_STRUCTURE
         if not soft_fail:
             if verbosity >= 5:
-                print(extra_points)
-                print()
-                print(corrected_extra_points)
-                print()
-                print(corrected_extra_points - extra_points)
-                print()
-                print(center_of_geometry(best_match))
+                log.debug(extra_points)
+                log.debug()
+                log.debug(corrected_extra_points)
+                log.debug()
+                log.debug(corrected_extra_points - extra_points)
+                log.debug()
+                log.debug(center_of_geometry(best_match))
 
         complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))
         complete_molecule_after = np.concatenate((corrected_best_match, corrected_extra_points))
@@ -421,21 +416,21 @@ def pointsOnPoints(
                 point_arrays[FIRST_STRUCTURE],
                 corrected_best_match,
                 verbosity=verbosity,
-                success_msg='INFO: aligned_points is isometric',
+                success_msg='aligned_points is isometric',
             )
 
             do_assert_is_isometry(
                 point_arrays[EXTRA_POINTS],
                 corrected_extra_points,
                 verbosity=verbosity,
-                success_msg='INFO: extra_points is isometric',
+                success_msg='extra_points is isometric',
             )
 
             do_assert_is_isometry(
                 complete_molecule_after,
                 complete_molecule_before,
                 verbosity=verbosity,
-                success_msg='INFO: complete_molecule is isometric',
+                success_msg='complete_molecule is isometric',
             )
     else:
         corrected_extra_points = None
@@ -522,12 +517,12 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function,
             r = rotmat(*reversed(reference_vectors))
 
             if verbosity >= 4:
-                print("INFO: Rotation parameters: {0} deg, axis {1}".format(
+                log.debug("Rotation parameters: {0} deg, axis {1}".format(
                     m2rotaxis(r)[0] * 180 / np.pi,
                     m2rotaxis(r)[1],
                 ))
 
-            assert m2rotaxis(r)[0] != 180., "ERROR: 180 degree rotation matrix currently not working"
+            assert m2rotaxis(r)[0] != 180., "180 degree rotation matrix currently not working"
 
             rotated_point_arrays = [np.dot(centered_arrays[0], r)]
 
@@ -549,7 +544,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function,
 
             if best_score <= score_tolerance and ALLOW_SHORTCUTS:
                 if verbosity >= 1:
-                    print("INFO: Found a really good match (Score={0}) worth aborting now. Exiting successfully.".format(
+                    log.debug("Found a really good match (Score={0}) worth aborting now. Exiting successfully.".format(
                         best_score,
                     ))
                 break
@@ -557,7 +552,7 @@ def bruteforce_aligning_vectors_method(centered_arrays, distance_array_function,
         break
 
     if verbosity >= 2:
-        print("INFO: Minimum Score from bruteforce algorithm is: {0}".format(best_score))
+        log.debug("Minimum Score from bruteforce algorithm is: {0}".format(best_score))
 
     return Alignment_Method_Result(
         'bruteforce_aligning_vectors',
@@ -609,10 +604,10 @@ def flavoured_kabsch_method(
                 old_array,
             )
         if verbosity >= 5:
-            print('INFO: POINT ARRAYS WERE CONSTANT')
+            log.debug('POINT ARRAYS WERE CONSTANT')
 
     if verbosity >= 5:
-        print('INFO: {0}'.format(dict(has_flavours=has_flavours)))
+        log.debug('{0}'.format(dict(has_flavours=has_flavours)))
 
     MIN_N_UNIQUE_POINTS = min(
         flavoured_kabsch_min_n_unique_points,
@@ -620,7 +615,7 @@ def flavoured_kabsch_method(
     )
 
     if verbosity >= 3:
-        print("INFO: Found flavours. Trying flavoured {0}-point Kabsch algorithm on flavoured types ...".format(MIN_N_UNIQUE_POINTS))
+        log.debug("Found flavours. Trying flavoured {0}-point Kabsch algorithm on flavoured types ...".format(MIN_N_UNIQUE_POINTS))
 
     grouped_flavours_lists = list(map(
         lambda index: group_by(flavour_lists[index], lambda x:x ),
@@ -656,7 +651,7 @@ def flavoured_kabsch_method(
         flavours = [list(map(on_flavour, unique_points_list)) for unique_points_list in unique_points_lists]
         total_flavours = set(flavours[0] + flavours[1])
         raise AssertionError( '''
-ERROR: Non matching number of unique points in
+Non matching number of unique points in
 {0}
 (len={1})
 
@@ -681,12 +676,12 @@ and
     ))
 
     if verbosity >= 3:
-        print('INFO: Unique groups found based on flavours:')
-        pp(unique_points_lists[0])
+        log.debug('Unique groups found based on flavours:')
+        log.debug(pformat(unique_points_lists[0]))
 
     if len(unique_points_lists[FIRST_STRUCTURE]) < MIN_N_UNIQUE_POINTS:
         if verbosity >= 3:
-            print("WARNING: Unable to find at least {N} unique point with the flavoured points provided. Trying to disambiguate enough points to make a fit...".format(N=MIN_N_UNIQUE_POINTS))
+            log.warning("Unable to find at least {N} unique point with the flavoured points provided. Trying to disambiguate enough points to make a fit...".format(N=MIN_N_UNIQUE_POINTS))
 
         missing_points = MIN_N_UNIQUE_POINTS - len(unique_points_lists[FIRST_STRUCTURE])
 
@@ -708,7 +703,7 @@ and
 
         if N_ambiguous_points < missing_points:
             if verbosity >= 1:
-                print("ERROR: Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(
+                log.error("Couldn'd find enough point to disambiguate: {M} (unique points) + {P} (ambiguous points) < {N} (required points). Returning best found match ...".format(
                     P=N_ambiguous_points,
                     M=len(unique_points_lists[0]),
                     N=MIN_N_UNIQUE_POINTS,
@@ -725,7 +720,7 @@ and
             )
 
         if verbosity >= 2:
-            print("INFO: Found enough additional points ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points))
+            log.debug("Found enough additional points ({N}) to disambiguate. Trying kabsch algorithm ...".format(N=N_ambiguous_points))
 
         permutations_list = []
         atom_indexes = lambda chemical_points: [chemical_point.index for chemical_point in chemical_points]
@@ -746,9 +741,9 @@ and
                 ambiguous_points += N_list[-1]
 
         if verbosity >= 3:
-            print('INFO: Ambiguous groups are:')
-            pp(ambiguous_point_groups[0])
-            print('(number of points taken in each group: {0})'.format(
+            log.debug('Ambiguous groups are:')
+            log.debug(pformat(ambiguous_point_groups[0]))
+            log.debug('(number of points taken in each group: {0})'.format(
                 N_list,
             ))
 
@@ -767,7 +762,6 @@ and
         best_match, best_score = [None]*2
         for (i, group_permutations) in enumerate(complete_permutation_list, start=1):
             ambiguous_unique_points = [deepcopy(unique_points_lists[FIRST_STRUCTURE])]
-            print()
 
             for group in group_permutations:
                 for index in group:
@@ -775,15 +769,14 @@ and
                     ambiguous_unique_points[FIRST_STRUCTURE].append(new_point)
 
             if verbosity >= 5:
-                print('INFO: ({0}/{1}) Attempting a fit between points:'.format(i, total_number_permutation))
-                pp(ambiguous_unique_points[FIRST_STRUCTURE])
-                print('and:')
-                pp(unique_points_lists[SECOND_STRUCTURE])
-                print()
+                log.debug('({0}/{1}) Attempting a fit between points:'.format(i, total_number_permutation))
+                log.debug(pformat(ambiguous_unique_points[FIRST_STRUCTURE]))
+                log.debug('and:')
+                log.debug(pformat(unique_points_lists[SECOND_STRUCTURE]))
 
             do_assert(
                 list(map(on_flavour, ambiguous_unique_points[0])) == list(map(on_flavour, unique_points_lists[SECOND_STRUCTURE])),
-                "ERROR: Trying to match points whose flavours don't match: {0} != {1}".format(
+                "Trying to match points whose flavours don't match: {0} != {1}".format(
                     list(map(
                         on_flavour,
                         ambiguous_unique_points[FIRST_STRUCTURE],
@@ -802,7 +795,7 @@ and
                 )
             except Kabsch_Error as e:
                 if verbosity >= 1:
-                    print(e)
+                    log.error(e)
                 return Alignment_Method_Result('flavoured_kabsch', FAILED_ALIGNMENT)
 
             kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
@@ -822,7 +815,7 @@ and
                 best_match, best_score, best_transform = kabsched_list1, current_score, transform
 
                 if verbosity >= 5:
-                    print("INFO: Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score))
+                    log.debug("Best score so far with random {0}-point Kabsch fitting: {1}".format(MIN_N_UNIQUE_POINTS, best_score))
 
                 if current_score <= score_tolerance:
                     return Alignment_Method_Result(
@@ -836,7 +829,7 @@ and
                     )
 
         if verbosity >= 5:
-            print("INFO: Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(
+            log.debug("Returning best match with random {0}-point Kabsch fitting (Score: {1})".format(
                 MIN_N_UNIQUE_POINTS,
                 best_score,
             ))
@@ -854,7 +847,7 @@ and
     else:
         do_assert(
             list(map(on_flavour, unique_points_lists[FIRST_STRUCTURE])) == list(map(on_flavour, unique_points_lists[SECOND_STRUCTURE])),
-            "ERROR: Unique points have not been ordered properly: {0} and {1}".format(
+            "Unique points have not been ordered properly: {0} and {1}".format(
                 list(map(on_flavour, unique_points_lists[0])),
                 list(map(on_flavour, unique_points_lists[1])),
             ),
@@ -862,7 +855,7 @@ and
 
         do_assert(
             list(map(on_flavour, unique_points_lists[FIRST_STRUCTURE])) == list(map(on_flavour, unique_points_lists[SECOND_STRUCTURE])),
-            'ERROR: Canonical representation of unique points do not match: {0} != {1}'.format(
+            'Canonical representation of unique points do not match: {0} != {1}'.format(
                 list(map(on_flavour, unique_points_lists[FIRST_STRUCTURE])),
                 list(map(on_flavour, unique_points_lists[SECOND_STRUCTURE])),
             ),
@@ -876,13 +869,13 @@ and
             )
         except Kabsch_Error as e:
             if verbosity >= 1:
-                print(e)
+                log.error(e)
             return Alignment_Method_Result('flavoured_kabsch', FAILED_ALIGNMENT)
 
         kabsched_list1 = current_transform(point_arrays[FIRST_STRUCTURE])
 
         if verbosity >= 5:
-            print(kabsched_list1, point_arrays[SECOND_STRUCTURE])
+            log.debug(kabsched_list1, point_arrays[SECOND_STRUCTURE])
 
         current_match = kabsched_list1
 
@@ -898,7 +891,7 @@ and
         )
 
         if verbosity >= 2:
-            print("INFO: Klabsch algorithm on unique flavours found a better match with a Score of {0}".format(
+            log.debug("Klabsch algorithm on unique flavours found a better match with a Score of {0}".format(
                 current_score,
             ))
 
@@ -924,7 +917,7 @@ def lucky_kabsch_method(point_lists, distance_array_function, flavour_lists=None
         transform = transform_mapping(*point_arrays)
     except Kabsch_Error as e:
         if verbosity >= 1:
-            print(e)
+            log.error(e)
         return Alignment_Method_Result('lucky_kabsch', FAILED_ALIGNMENT)
 
     kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
@@ -936,7 +929,7 @@ def lucky_kabsch_method(point_lists, distance_array_function, flavour_lists=None
     )
 
     if verbosity >= 1:
-        print("INFO: Minimum Score from lucky Kabsch method is: {0}".format(
+        log.debug("Minimum Score from lucky Kabsch method is: {0}".format(
             current_score,
         ))
 
@@ -973,7 +966,7 @@ def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists
             transform = transform_mapping(*unique_points)
         except Kabsch_Error as e:
             if verbosity >= 1:
-                print(e)
+                log.error(e)
             return Alignment_Method_Result('bruteforce_kabsch_method', FAILED_ALIGNMENT)
 
         kabsched_list1 = transform(point_arrays[FIRST_STRUCTURE])
@@ -988,13 +981,13 @@ def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists
         if (best_score is None) or current_score <= best_score:
             best_match, best_score = kabsched_list1, current_score
             if verbosity >= 3:
-                print("INFO: Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(
+                log.debug("Best score so far with bruteforce {N}-point Kabsch fitting: {best_score}".format(
                     best_score=best_score,
                     N=N_BRUTEFORCE_KABSCH,
                 ))
 
     if verbosity >= 3:
-        print("INFO: Minimum Score from bruteforce Kabsch method is: {0}".format(
+        log.debug("Minimum Score from bruteforce Kabsch method is: {0}".format(
             best_score,
         ))
 
@@ -1013,8 +1006,8 @@ def bruteforce_kabsch_method(point_lists, distance_array_function, flavour_lists
 def rotation_matrix_kabsch_on_points(points1, points2):
     # Align those points using Kabsch algorithm
     P, Q = array(points1), array(points2)
-    #print P
-    #print Q
+    #log.debug(P)
+    #log.debug(Q)
     Pc, Qc = centroid(P), centroid(Q)
     P, Q = P - Pc, Q - Qc
     U = kabsch(P, Q)

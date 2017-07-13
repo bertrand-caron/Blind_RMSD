@@ -1,3 +1,4 @@
+from Blind_RMSD.helpers.log import log
 from Blind_RMSD.helpers.assertions import do_assert
 from Blind_RMSD.helpers.numpy_helpers import *
 
@@ -12,7 +13,7 @@ def rmsd(point_list1, point_list2, mask_array=None):
 def rmsd_array(point_array1, point_array2, mask_array = None, verbosity=0):
     do_assert(
         point_array1.shape == point_array2.shape,
-        "Error: Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*[x.shape for x in [point_array1, point_array2]]),
+        "Won't compute RMSD on arrays with different sizes: {0} and {1}".format(*[x.shape for x in [point_array1, point_array2]]),
     )
 
     distance_matrix = get_distance_matrix(point_array1, point_array2)
@@ -20,7 +21,7 @@ def rmsd_array(point_array1, point_array2, mask_array = None, verbosity=0):
     if mask_array is not None:
         do_assert(
             mask_array.shape == distance_matrix.shape,
-            'Error: Shapes of mask arrays do not match: {0} != {1}'.format(
+            'Shapes of mask arrays do not match: {0} != {1}'.format(
                 mask_array.shape,
                 distance_matrix.shape,
             ),
@@ -29,12 +30,12 @@ def rmsd_array(point_array1, point_array2, mask_array = None, verbosity=0):
         mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))
 
     if verbosity >= 3:
-        print("    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0]))
+        log.debug("Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0]))
 
     rmsd = sqrt( mean( square( np.min( distance_matrix + np.transpose(mask_array), axis=0 ) ) ) )
 
     if verbosity >= 4:
-        print("    Info: New RMSD: {0}".format(rmsd))
+        log.debug("New RMSD: {0}".format(rmsd))
 
     raise Exception() # Wrong until proven otherwise
 
@@ -51,16 +52,16 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, verbosity
         mask_array = np.zeros((point_array1.shape[0], point_array1.shape[0]))
 
     if verbosity >= 5:
-        print("    Info: Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0]))
+        log.debug("Number of contact points: {0}/{1}".format(count_contact_points(distance_matrix), point_array1.shape[0]))
     #mask_array = np.transpose(mask_array)
     if verbosity >= 500:
-        print('    INFO: mask_array:')
-        print(mask_array)
-        print('    INFO: distance_matrix:')
-        print(distance_matrix)
+        log.debug('mask_array:')
+        log.debug(mask_array)
+        log.debug('distance_matrix:')
+        log.debug(distance_matrix)
     if verbosity >= 5:
-        print('    INFO: masked distance_matrix:')
-        print(distance_matrix + mask_array)
+        log.debug('masked distance_matrix:')
+        log.debug(distance_matrix + mask_array)
 
     distances = []
     for point1 in range(mask_array.shape[0]):
@@ -75,7 +76,7 @@ def rmsd_array_for_loop(point_array1, point_array2, mask_array = None, verbosity
     assert rmsd != INFINITE_RMSD
 
     if verbosity >= 4:
-        print("    Info: New RMSD: {0}".format(rmsd))
+        log.debug("New RMSD: {0}".format(rmsd))
 
     return rmsd
 
@@ -96,7 +97,7 @@ def ad_array(point_array1, point_array2, mask_array=None, verbosity=0):
     ad = max( np.min( distance_matrix, axis=0 ) )
 
     if verbosity >= 4:
-        print("    Info: New AD: {0}".format(ad))
+        log.debug("New AD: {0}".format(ad))
 
     return ad
 
@@ -108,6 +109,8 @@ def count_contact_points(distance_matrix):
     contacts = 0
     for line in distance_matrix[:,0:size]:
         new_contacts = sum([int(dist <= CONTACT_THRESHOLD) for dist in line])
-        if new_contacts in [0,1]: contacts += new_contacts
-        else: raise Exception("Error: Several points are in contact with the same one: {0}".format(line))
+        if new_contacts in [0,1]:
+            contacts += new_contacts
+        else:
+            raise Exception("Error: Several points are in contact with the same one: {0}".format(line))
     return contacts

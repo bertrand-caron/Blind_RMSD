@@ -37,6 +37,7 @@ Alignment_Results = NamedTuple(
         ('success', bool),
         ('error_exc', Any),
         ('permutation', Dict[int, int]),
+        ('atom_names_permutation', Dict[int, int]),
         ('total_fit_points', int),
         ('kabsch_fit_point', int),
     ],
@@ -139,6 +140,10 @@ def align_pdb_on_pdb(
             success=success,
             error_exc=format_exc(),
             permutation=alignment.final_permutation,
+            atom_names_permutation={
+                other_pdb_data.data['atoms'][other_atom_id + 1]['symbol']: reference_pdb_data.data['atoms'][reference_atom_id + 1]['symbol']
+                for (other_atom_id, reference_atom_id) in alignment.final_permutation
+            },
             total_fit_points=None,
             kabsch_fit_point=None,
         ),

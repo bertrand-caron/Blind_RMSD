@@ -11,7 +11,7 @@ from Blind_RMSD.helpers.moldata import flavour_list, point_list, aligned_pdb_str
 from Blind_RMSD.align import pointsOnPoints, FAILED_ALIGNMENT, NULL_PDB_WRITING_FCT
 from Blind_RMSD.helpers.exceptions import Topology_Error, Permutation_Not_Found_Error
 
-from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr, ALL_EXCEPTION_SEARCHING_KEYWORDS
+from chemical_equivalence.calcChemEquivalency import partial_mol_data_for_pdbstr, ALL_EXCEPTION_SEARCHING_KEYWORDS, MolDataFailure
 
 UNITED_RMSD_FIT = True
 

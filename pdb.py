@@ -45,8 +45,17 @@ Alignment_Results = NamedTuple(
 
 DEBUG_DIR = join(dirname(abspath(__file__)), 'debug')
 
-def pdb_data_for(pdb_str: str, exception_searching_keywords: List[str] = ALL_EXCEPTION_SEARCHING_KEYWORDS, united_atom_fit: bool = UNITED_RMSD_FIT) -> PDB_Data:
-    data = partial_mol_data_for_pdbstr(pdb_str, exception_searching_keywords=exception_searching_keywords).__dict__
+def pdb_data_for(
+    pdb_str: str,
+    exception_searching_keywords: List[str] = ALL_EXCEPTION_SEARCHING_KEYWORDS,
+    united_atom_fit: bool = UNITED_RMSD_FIT,
+    enforce_single_molecule: bool = True,
+) -> PDB_Data:
+    data = partial_mol_data_for_pdbstr(
+        pdb_str,
+        exception_searching_keywords=exception_searching_keywords,
+        enforce_single_molecule=enforce_single_molecule,
+    ).__dict__
 
     return PDB_Data(
         data=data,

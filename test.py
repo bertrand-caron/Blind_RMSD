@@ -45,7 +45,7 @@ if __name__ == '__main__':
                 assert_is_isometry=True,
                 debug=True,
                 test_id='{0}_{1}'.format(*test_pair),
-                exception_searching_keywords=['chiral_centers', 'inversable_rings'] if test_pair == (297997, 38797) else ALL_EXCEPTION_SEARCHING_KEYWORDS,
+                exception_searching_keywords=ALL_EXCEPTION_SEARCHING_KEYWORDS,
             )
         except:
             if test_pair in SHOULD_FAIL:

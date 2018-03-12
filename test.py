@@ -1,5 +1,6 @@
-from Blind_RMSD.pdb import pdb_data_for, align_pdb_on_pdb
 from os.path import join
+
+from Blind_RMSD.pdb import pdb_data_for, align_pdb_on_pdb, ALL_EXCEPTION_SEARCHING_KEYWORDS
 
 DATA_DIR = 'data'
 
@@ -21,7 +22,8 @@ TEST_PAIRS = (
 #    (17, 17),
 #    (18, 18),
 #    (19, 20),
-    (21, 22),
+#    (21, 22),
+    (297997, 38797),
 )
 
 SHOULD_FAIL = {
@@ -43,6 +45,7 @@ if __name__ == '__main__':
                 assert_is_isometry=True,
                 debug=True,
                 test_id='{0}_{1}'.format(*test_pair),
+                exception_searching_keywords=['chiral_centers', 'inversable_rings'] if test_pair == (297997, 38797) else ALL_EXCEPTION_SEARCHING_KEYWORDS,
             )
         except:
             if test_pair in SHOULD_FAIL:

@@ -143,7 +143,7 @@ def pointsOnPoints(
         )
         do_assert(
             sorted(flavour_lists[FIRST_STRUCTURE]) == sorted(flavour_lists[SECOND_STRUCTURE]),
-            "There is not a one to one mapping between the sorted flavour of the sets: {0} and {1}".format(*list(map(sorted, flavour_lists))),
+            "There is not a one to one mapping between the sorted flavour of the sets: {0}".format([(a, b) for (a, b) in zip(*list(map(sorted, flavour_lists))) if a != b]),
             exception_type=Topology_Error,
         )
 
@@ -400,11 +400,11 @@ def pointsOnPoints(
         if not soft_fail:
             if verbosity >= 5:
                 log.debug(extra_points)
-                log.debug()
+                log.debug('')
                 log.debug(corrected_extra_points)
-                log.debug()
+                log.debug('')
                 log.debug(corrected_extra_points - extra_points)
-                log.debug()
+                log.debug('')
                 log.debug(center_of_geometry(best_match))
 
         complete_molecule_before = np.concatenate((point_arrays[FIRST_STRUCTURE], point_arrays[EXTRA_POINTS]))

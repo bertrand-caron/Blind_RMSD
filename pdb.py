@@ -78,15 +78,16 @@ def align_pdb_on_pdb(
     debug: bool = False,
     test_id: str = '',
     united_atom_fit: bool = UNITED_RMSD_FIT,
+    exception_searching_keywords: List[str] = ALL_EXCEPTION_SEARCHING_KEYWORDS,
     **kwargs: Dict[str, Any]
 ) -> Tuple[PDB, RMSD, Alignment_Results]:
     assert reference_pdb_str is not None or reference_pdb_data is not None
     if reference_pdb_data is None:
-        reference_pdb_data = pdb_data_for(reference_pdb_str, united_atom_fit=united_atom_fit)
+        reference_pdb_data = pdb_data_for(reference_pdb_str, united_atom_fit=united_atom_fit, exception_searching_keywords=exception_searching_keywords)
 
     assert other_pdb_str is not None or other_pdb_data is not None
     if other_pdb_data is None:
-        other_pdb_data = pdb_data_for(other_pdb_str, united_atom_fit=united_atom_fit)
+        other_pdb_data = pdb_data_for(other_pdb_str, united_atom_fit=united_atom_fit, exception_searching_keywords=exception_searching_keywords)
 
     assert len(set([pdb_data.united_atom_fit for pdb_data in (reference_pdb_data, other_pdb_data)])) == 1, [pdb_data for pdb_data in (reference_pdb_data, other_pdb_data)]
 

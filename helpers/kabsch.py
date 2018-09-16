@@ -6,7 +6,10 @@ class Kabsch_Error(Exception):
 
 def kabsch(P, Q):
     """
-    Copied from lib/charnley_rmsd/kabsch.py
+    Copied from https://github.com/charnley/rmsd/blob/master/rmsd/calculate_rmsd.py
+    distributed under the BSD 2-Clause "Simplified" License (see LICENSE).
+
+    Modified to raise a Kabsch_Error for linear or planar molecules.
 
     The optimal rotation matrix U is calculated and then used to rotate matrix
     P unto matrix Q so the minimum root-mean-square deviation (RMSD) can be
@@ -61,9 +64,9 @@ def kabsch(P, Q):
 
 def centroid(X):
     """
-    Copied from lib/charnley_rmsd/kabsch.py
+    Copied from https://github.com/charnley/rmsd/blob/master/rmsd/calculate_rmsd.py
+    distributed under the BSD 2-Clause "Simplified" License (see LICENSE).
 
     Calculate the centroid from a vectorset X
     """
-    C = sum(X)/len(X)
-    return C
+    return X.mean(axis=0)

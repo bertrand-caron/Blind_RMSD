@@ -1,7 +1,7 @@
+from typing import Dict, Callable, Sequence, Any, List
 from functools import reduce
 
-from atb_helpers.pdb import substitute_coordinates_in, is_pdb_atom_line
-from atb_helpers.iterables import group_by
+from chemistry_helpers.pdb import substitute_coordinates_in, is_pdb_atom_line
 
 def should_keep_atom(atom, united=False):
     return (united and 'uindex' in atom) or (not united)
@@ -161,6 +161,13 @@ def split_equivalence_group(eq_list):
             split_eq_list.append(eq-accu)
             accu += 1
     return split_eq_list
+
+def group_by(iterable: Sequence[Any], key: Callable[[Any], Any]) -> Dict[Any, List[Any]]:
+    group_dict = {}
+    for obj in iterable:
+        group_dict.setdefault(key(obj), [])
+        group_dict[key(obj)].append(obj)
+    return group_dict
 
 if __name__ == '__main__':
     from Blind_RMSD.pdb import pdb_data_for

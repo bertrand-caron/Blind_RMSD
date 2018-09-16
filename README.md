@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/148723006.svg)](https://zenodo.org/badge/latestdoi/148723006)
+
 # Dependencies
 
 * `bertrand-caron/biopython`: Fork of Biopython (only used for its Vector class).
@@ -35,3 +37,7 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named 'Blind_RMSD'
 make: *** [test] Error 1
 ```
+
+# Citation / Attribution
+
+To cite this work, please use the following [Zenodo DOI](https://zenodo.org/badge/latestdoi/148723006).
